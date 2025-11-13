@@ -6,7 +6,6 @@
 #define CAPPUCCINO_TOKEN_H
 #include <string>
 #include <vector>
-#include <optional>
 #include <iostream>
 
 enum TokenType {
@@ -48,7 +47,6 @@ public:
 
     friend std::ostream& operator<<(std::ostream& os, const Token& tok);
 
-private:
     std::string lexeme;
     int row, column;
     std::variant<std::monostate, int, float, std::string> fd;

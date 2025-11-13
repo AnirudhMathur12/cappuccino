@@ -144,10 +144,10 @@ Token Tokenizer::number() {
 
     bool isFloat = false;
 
-    if (peek() == '.' || std::isdigit(peekNext())) {
+    if (peek() == '.' && std::isdigit(peekNext())) {
         isFloat = true;
         advance();
-        while (std::isdigit(peekNext())) advance();
+        while (std::isdigit(peek())) advance();
     }
 
     std::string lex = src.substr(start, current - start);

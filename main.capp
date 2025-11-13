@@ -1,5 +1,1 @@
-int main(int k) {
-    int a = 0;
-    int b = "str";
-    return 0;
-}
+int a = 2.3;
