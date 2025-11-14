@@ -1,5 +1,7 @@
 #include <iostream>
 
+#include "AbstractSyntaxTree.h"
+#include "Parser.h"
 #include "Token.h"
 #include "utils.h"
 
@@ -22,6 +24,11 @@ int main(int argc, char* argv[]) {
     for (Token& token : tokens) {
         std::cout << token << std::endl;
     }
+
+    Parser p(tokens);
+    Program prog = p.parse();
+
+    prog.dump();
 
     return 0;
 }

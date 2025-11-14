@@ -3,6 +3,8 @@
 //
 
 #include "AbstractSyntaxTree.h"
+#include <string>
+#include <type_traits>
 #include <variant>
 
 LiteralExpr::LiteralExpr(const Token& t) : token(t) {
@@ -17,10 +19,18 @@ LiteralExpr::LiteralExpr(const Token& t) : token(t) {
     }, t.fd);
 }
 
-
 void LiteralExpr::dump(int indent) const {
      std::string pad(indent, ' ');
-     std::cout << pad << "Literal(" << std::get<0>(value) << ")" << std::endl;
+     std::cout << pad << "Literal(";
+     std::visit([] (auto&& val) {
+        using T = std::decay_t<decltype(val)>;
+        if constexpr (std::is_same_v<std::string, T>) {
+             std::cout << "\"" << val << "\"";
+        } else {
+            std::cout << val;
+        }
+     }, value);
+     std::cout << ")" << std::endl;
 }
 
 IdentifierExpr::IdentifierExpr(Token t) : token(t), name(t.lexeme) {}

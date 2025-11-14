@@ -19,35 +19,41 @@ Token::Token(const std::string& p_lexeme, int p_row, int p_col, TokenType p_type
 
 inline std::string token_type_to_string(TokenType type) {
     switch (type) {
-        case LITERAL_STRING:        return "LITERAL_STRING";
-        case LITERAL_FLOAT:         return "LITERAL_FLOAT";
-        case LITERAL_INTEGER:           return "LITERAL_INTEGER";
-        case IDENTIFIER:            return "IDENTIFIER";
-        case KEYWORD_IF:            return "KEYWORD_IF";
-        case KEYWORD_ELSE:          return "KEYWORD_ELSE";
-        case KEYWORD_FOR:           return "KEYWORD_FOR";
-        case KEYWORD_RETURN:        return "KEYWORD_RETURN";
-        case KEYWORD_WHILE:         return "KEYWORD_WHILE";
-        case OPERATOR_PLUS:         return "OPERATOR_PLUS";
-        case OPERATOR_MINUS:        return "OPERATOR_MINUS";
-        case OPERATOR_ASTERISK:     return "OPERATOR_ASTERISK";
-        case OPERATOR_EQUALS:       return "OPERATOR_EQUALS";
-        case OPERATOR_FORWARD_SLASH:return "OPERATOR_FORWARD_SLASH";
-        case OPERATOR_BACKSLASH:    return "OPERATOR_BACKSLASH";
-        case LEFT_PAREN:            return "LEFT_PAREN";
-        case RIGHT_PAREN:           return "RIGHT_PAREN";
-        case EXCL_EQUAL:            return "EXCL_EQUAL";
-        case EXCLAMATION:           return "EXCLAMATION";
-        case TOKEN_EOF:             return "TOKEN_EOF";
-        case KEYWORD_TYPE_FLOAT:     return "KEYWORD_TYPE_FLOAT";
+        case LITERAL_STRING:         return "LITERAL_STRING";
+        case LITERAL_FLOAT:          return "LITERAL_FLOAT";
+        case LITERAL_INTEGER:        return "LITERAL_INTEGER";
+        case IDENTIFIER:             return "IDENTIFIER";
+        case SEMICOLON:              return "SEMICOLON";
+        case KEYWORD_IF:             return "KEYWORD_IF";
+        case KEYWORD_ELSE:           return "KEYWORD_ELSE";
+        case KEYWORD_FOR:            return "KEYWORD_FOR";
+        case KEYWORD_RETURN:         return "KEYWORD_RETURN";
+        case KEYWORD_WHILE:          return "KEYWORD_WHILE";
         case KEYWORD_TYPE_INT:       return "KEYWORD_TYPE_INT";
+        case KEYWORD_TYPE_FLOAT:     return "KEYWORD_TYPE_FLOAT";
         case KEYWORD_TYPE_STRING:    return "KEYWORD_TYPE_STRING";
-        case SEMICOLON:             return "SEMICOLON";
-        case RIGHT_CURLY:           return "RIGHT_CURLY";
+        case OPERATOR_EQUALITY:      return "OPERATOR_EQUALITY";
+        case OPERATOR_MINUS:         return "OPERATOR_MINUS";
+        case OPERATOR_PLUS:          return "OPERATOR_PLUS";
+        case OPERATOR_ASTERISK:      return "OPERATOR_ASTERISK";
+        case OPERATOR_ASSIGNMENT:   return "OPERATOR_ASSIGNEMENT";
+        case OPERATOR_LESS:          return "OPERATOR_LESS";
+        case OPERATOR_LESS_EQUALS:   return "OPERATOR_LESS_EQUALS";
+        case OPERATOR_GREATER:       return "OPERATOR_GREATER";
+        case OPERATOR_GREATER_EQUALS:return "OPERATOR_GREATER_EQUALS";
+        case OPERATOR_FORWARD_SLASH: return "OPERATOR_FORWARD_SLASH";
+        case OPERATOR_BACKSLASH:     return "OPERATOR_BACKSLASH";
+        case LEFT_PAREN:             return "LEFT_PAREN";
+        case RIGHT_PAREN:            return "RIGHT_PAREN";
         case LEFT_CURLY:             return "LEFT_CURLY";
-        default:                    return "UNKNOWN_TOKEN";
+        case RIGHT_CURLY:            return "RIGHT_CURLY";
+        case EXCL_EQUAL:             return "EXCL_EQUAL";
+        case EXCLAMATION:            return "EXCLAMATION";
+        case TOKEN_EOF:              return "TOKEN_EOF";
     }
+    return "<UNKNOWN_TOKEN>";
 }
+
 
 inline std::string fd_to_string(const std::variant<std::monostate, int, float, std::string>& v) {
     return std::visit([](auto&& value) -> std::string {
@@ -92,15 +98,35 @@ std::vector<Token> Tokenizer::tokenize() {
             case ')': tokens.push_back(makeToken(TokenType::RIGHT_PAREN)); break;
             case '{': tokens.push_back(makeToken(TokenType::LEFT_CURLY)); break;
             case '}': tokens.push_back(makeToken(TokenType::RIGHT_CURLY)); break;
-            case '+':tokens.push_back(makeToken(TokenType::OPERATOR_PLUS)); break;
+            case '+': tokens.push_back(makeToken(TokenType::OPERATOR_PLUS)); break;
+            case '-': tokens.push_back(makeToken(TokenType::OPERATOR_MINUS)); break;
             case ';': tokens.push_back(makeToken(TokenType::SEMICOLON)); break;
-            case '=': tokens.push_back(makeToken(TokenType::OPERATOR_EQUALS)); break;
+            case '*': tokens.push_back(makeToken(TokenType::OPERATOR_ASTERISK)); break;
+
+            case '=':
+                tokens.push_back(makeToken(
+                    (peek() == '=') ? (advance(), TokenType::OPERATOR_EQUALITY)
+                    : TokenType::OPERATOR_ASSIGNMENT));
+                break;
 
             case '!':
                 tokens.push_back(makeToken(
                     (peek() == '=') ? (advance(), TokenType::EXCL_EQUAL)
                     : TokenType::EXCLAMATION));
                 break;
+
+            case '>':
+                tokens.push_back(makeToken(
+                    (peek() == '=') ? (advance(), TokenType::OPERATOR_LESS_EQUALS) :
+                    TokenType::OPERATOR_LESS));
+                break;
+
+            case '<':
+                tokens.push_back(makeToken(
+                    (peek() == '=') ? (advance(), TokenType::OPERATOR_GREATER_EQUALS) :
+                    TokenType::OPERATOR_GREATER));
+                break;
+
 
             case '"' : tokens.push_back(string()); break;
             default:
