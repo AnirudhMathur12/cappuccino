@@ -69,12 +69,12 @@ struct ExprStmt : Stmt {
     void dump(int indent = 0) const override;
 };
 
-struct VariableDecl : Stmt {
+struct VariableDeclStmt : Stmt {
     Token type_token;
     std::string name;
     std::optional<ExprPtr> initializer;
 
-    VariableDecl(const Token& t, std::string n, std::optional<ExprPtr> i);
+    VariableDeclStmt(const Token& t, std::string n, std::optional<ExprPtr> i);
     void dump(int indent = 0) const override;
 };
 
@@ -103,13 +103,13 @@ struct WhileStmt : Stmt {
 };
 
 struct ForStmt : Stmt {
-    ExprPtr initializer;
-    ExprPtr condition;
-    ExprPtr increment;
+    std::optional<StmtPtr> initializer;
+    std::optional<ExprPtr> condition;
+    std::optional<ExprPtr> increment;
 
     StmtPtr body;
 
-    ForStmt(ExprPtr i, ExprPtr c, ExprPtr inc, StmtPtr b);
+    ForStmt(std::optional<StmtPtr> i, std::optional<ExprPtr> c, std::optional<ExprPtr> inc, StmtPtr b);
     void dump(int indent = 0) const override;
 };
 
@@ -121,10 +121,30 @@ struct ReturnStmt : Stmt {
     void dump(int indent = 0) const override;
 };
 
+struct FunctionParameter {
+    Token type_token;
+    std::string name;
+
+    FunctionParameter(const Token& p_type_token, const std::string& n);
+};
+
+struct FunctionDecl{
+    Token return_type;
+    Token name_token;
+    std::vector<FunctionParameter> params;
+    std::unique_ptr<BlockStmt> body;
+    FunctionDecl(const Token& rt, const Token& name, std::vector<FunctionParameter> p, std::unique_ptr<BlockStmt> b);
+
+    void dump(int indent = 0) const;
+};
+
+
+
 struct Program {
     std::vector<StmtPtr> statements;
 
     void dump() const;
+    std::unordered_map<std::string, int> var_offset_lookup;
 };
 
 #endif //CAPPUCCINO_ABSTRACTSYNTAXTREE_H

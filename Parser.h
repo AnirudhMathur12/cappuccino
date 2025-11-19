@@ -1,32 +1,35 @@
 #ifndef CAPPUCCINO_PARSER_H
 #define CAPPUCCINO_PARSER_H
 
+#include "AbstractSyntaxTree.h"
 #include "Token.h"
 #include <stdexcept>
-#include "AbstractSyntaxTree.h"
 
 class ParseError : public std::runtime_error {
-    public:
+  public:
     using std::runtime_error::runtime_error;
 };
 
 class Parser {
-public:
-    Parser(const std::vector<Token>& tokens);
+  public:
+    Parser(const std::vector<Token> &tokens);
 
     Program parse();
-private:
-    const std::vector<Token>& tokens;
-    size_t pos = 0;
 
-    const Token& peek() const;
-    const Token& previous() const;
-    const Token& advance();
+  private:
+    const std::vector<Token> &tokens;
+    size_t pos = 0;
+    std::unordered_map<std::string, int> var_offset_lookup;
+    int total_size_bytes = 0;
+
+    const Token &peek() const;
+    const Token &previous() const;
+    const Token &advance();
 
     bool isAtEnd() const;
     bool check(TokenType t) const;
-    bool match(TokenType t) ;
-    void consume(TokenType t, const char* msg);
+    bool match(TokenType t);
+    void consume(TokenType t, const char *msg);
 
     ExprPtr parseExpression();
     ExprPtr parsePrimary();
@@ -34,10 +37,16 @@ private:
     ExprPtr parseFactor();
     ExprPtr parseComparison();
     ExprPtr parseEquality();
-
     ExprPtr parseAssignment();
-
     ExprPtr parseTerm();
+
+    StmtPtr parseStatement();
+    StmtPtr parseExpressionStatement();
+    StmtPtr parseVarDecl();
+    StmtPtr parseBlock();
+    StmtPtr parseIf();
+    StmtPtr parseWhile();
+    StmtPtr parseFor();
 };
 
 #endif
