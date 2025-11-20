@@ -7,7 +7,11 @@
 
 class ParseError : public std::runtime_error {
   public:
-    using std::runtime_error::runtime_error;
+    const Token token;
+    ParseError(const Token &tok, const std::string &msg);
+
+  private:
+    static std::string format_message(const Token &tok, const std::string msg);
 };
 
 class Parser {

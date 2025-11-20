@@ -1,8 +1,22 @@
 #include "Parser.h"
 #include "AbstractSyntaxTree.h"
 #include "Token.h"
+#include <iostream>
 #include <memory>
+#include <sstream>
 #include <vector>
+
+ParseError::ParseError(const Token &tok, const std::string &msg)
+    : std::runtime_error(format_message(tok, msg)), token(tok) {}
+
+std::string ParseError::format_message(const Token &tok,
+                                       const std::string msg) {
+    std::ostringstream oss;
+    oss << "[Line:" << tok.row << ", Column:" << tok.column << "] " << msg
+        << std::endl;
+
+    return oss.str();
+}
 
 Parser::Parser(const std::vector<Token> &p_tokens) : tokens(p_tokens) {}
 
@@ -43,7 +57,7 @@ void Parser::consume(TokenType t, const char *msg) {
         return;
     }
 
-    throw ParseError(msg);
+    throw ParseError(peek(), msg);
 }
 
 ExprPtr Parser::parsePrimary() {
@@ -77,7 +91,7 @@ ExprPtr Parser::parsePrimary() {
         return std::make_unique<GroupingExpr>(std::move(expr));
     }
 
-    throw ParseError("Expected expression");
+    throw ParseError(peek(), "Expected expression");
 }
 
 ExprPtr Parser::parseUnary() {
@@ -155,7 +169,7 @@ ExprPtr Parser::parseAssignment() {
                                                 std::move(right));
         }
 
-        throw ParseError("Invalid assignment target.");
+        throw ParseError(peek(), "Invalid assignment target.");
     }
 
     return left;
@@ -285,8 +299,8 @@ StmtPtr Parser::parseFor() {
     std::optional<StmtPtr> init;
 
     if (!check(SEMICOLON)) {
-        if (check(KEYWORD_TYPE_INT) || check(KEYWORD_TYPE_FLOAT) ||
-            check(KEYWORD_TYPE_STRING)) {
+        if (match(KEYWORD_TYPE_INT) || match(KEYWORD_TYPE_FLOAT) ||
+            match(KEYWORD_TYPE_STRING)) {
             init = parseVarOrFunctionDecl();
         } else {
             init = parseExpressionStatement();

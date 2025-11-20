@@ -153,6 +153,9 @@ std::vector<Token> Tokenizer::tokenize() {
         case '*':
             tokens.push_back(makeToken(TokenType::OPERATOR_ASTERISK));
             break;
+        case '/':
+            tokens.push_back(makeToken(TokenType::OPERATOR_FORWARD_SLASH));
+            break;
         case ',':
             tokens.push_back(makeToken(TokenType::COMMA));
             break;
@@ -169,13 +172,13 @@ std::vector<Token> Tokenizer::tokenize() {
                                            : TokenType::EXCLAMATION));
             break;
 
-        case '>':
+        case '<':
             tokens.push_back(makeToken(
                 (peek() == '=') ? (advance(), TokenType::OPERATOR_LESS_EQUALS)
                                 : TokenType::OPERATOR_LESS));
             break;
 
-        case '<':
+        case '>':
             tokens.push_back(
                 makeToken((peek() == '=')
                               ? (advance(), TokenType::OPERATOR_GREATER_EQUALS)
