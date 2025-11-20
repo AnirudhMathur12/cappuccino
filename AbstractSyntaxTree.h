@@ -128,7 +128,7 @@ struct FunctionParameterStmt : Stmt {
     std::string name;
 
     FunctionParameterStmt(const Token &p_type_token, const std::string &n);
-    void dump(int indent = 0) const;
+    void dump(int indent = 0) const override;
 };
 
 struct FunctionDeclStmt : Stmt {
@@ -138,7 +138,7 @@ struct FunctionDeclStmt : Stmt {
     StmtPtr body;
     FunctionDeclStmt(Token rt, Token name, std::vector<StmtPtr> p, StmtPtr b);
 
-    void dump(int indent = 0) const;
+    void dump(int indent = 0) const override;
 };
 
 struct FunctionCallExpr : Expr {
@@ -146,7 +146,7 @@ struct FunctionCallExpr : Expr {
     std::vector<ExprPtr> args;
 
     FunctionCallExpr(const Token &n, std::vector<ExprPtr> p_args);
-    void dump(int indent = 0) const;
+    void dump(int indent = 0) const override;
 };
 
 struct Program {
