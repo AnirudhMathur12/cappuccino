@@ -4,6 +4,7 @@
 //
 
 #include "AbstractSyntaxTree.h"
+#include <ostream>
 #include <string>
 #include <type_traits>
 #include <variant>
@@ -165,28 +166,45 @@ void ReturnStmt::dump(int indent) const {
     }
 }
 
-FunctionParameter::FunctionParameter(const Token &p_type_token,
-                                     const std::string &n)
+FunctionParameterStmt::FunctionParameterStmt(const Token &p_type_token,
+                                             const std::string &n)
     : type_token(p_type_token), name(n) {}
 
-FunctionDecl::FunctionDecl(const Token &rt, const Token &name,
-                           std::vector<FunctionParameter> p,
-                           std::unique_ptr<BlockStmt> b)
-    : return_type(std::move(rt)), name_token(std::move(name)),
-      body(std::move(b)) {}
+void FunctionParameterStmt::dump(int indent) const {
+    std::string pad(indent, ' ');
+    std::cout << pad << "Type: " << type_token.lexeme << " Name: " << name
+              << std::endl;
+}
 
-void FunctionDecl::dump(int indent) const {
+FunctionDeclStmt::FunctionDeclStmt(Token rt, Token name, std::vector<StmtPtr> p,
+                                   StmtPtr b)
+    : return_type(std::move(rt)), name_token(std::move(name)),
+      params(std::move(p)), body(std::move(b)) {}
+
+void FunctionDeclStmt::dump(int indent) const {
     std::string pad(indent, ' ');
     std::cout << pad << "Function " << name_token.lexeme << " returns "
               << return_type.lexeme << "\n";
     std::cout << pad << "  Params:\n";
     for (auto &pr : params) {
-        std::cout << pad << "    " << pr.type_token.lexeme << " " << pr.name
-                  << "\n";
+        pr->dump(indent + 4);
     }
     std::cout << pad << "  Body:\n";
     if (body)
         body->dump(indent + 4);
+}
+
+FunctionCallExpr::FunctionCallExpr(const Token &n, std::vector<ExprPtr> p_args)
+    : name_token(n), args(std::move(p_args)) {}
+
+void FunctionCallExpr::dump(int indent) const {
+    std::string pad(indent, ' ');
+    std::cout << pad << "Function Call:" << std::endl;
+    std::cout << pad << "\tFunction Name: " << name_token.lexeme << std::endl;
+    std::cout << pad << "\tArguements" << std::endl;
+    for (auto &e : args) {
+        e->dump(indent + 8);
+    }
 }
 
 void Program::dump() const {

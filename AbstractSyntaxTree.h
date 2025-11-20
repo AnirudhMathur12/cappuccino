@@ -5,8 +5,8 @@
 #ifndef CAPPUCCINO_ABSTRACTSYNTAXTREE_H
 #define CAPPUCCINO_ABSTRACTSYNTAXTREE_H
 
-#include <memory>
 #include "Token.h"
+#include <memory>
 
 struct Expr {
     virtual ~Expr() = default;
@@ -26,7 +26,7 @@ struct LiteralExpr : Expr {
     Token token;
     std::variant<int, float, std::string> value;
 
-    LiteralExpr(const Token& t);
+    LiteralExpr(const Token &t);
     void dump(int indent = 0) const override;
 };
 
@@ -52,6 +52,7 @@ struct BinaryExpr : Expr {
     ExprPtr right;
 
     BinaryExpr(Token t, ExprPtr l, ExprPtr r);
+
     void dump(int indent = 0) const override;
 };
 
@@ -74,7 +75,7 @@ struct VariableDeclStmt : Stmt {
     std::string name;
     std::optional<ExprPtr> initializer;
 
-    VariableDeclStmt(const Token& t, std::string n, std::optional<ExprPtr> i);
+    VariableDeclStmt(const Token &t, std::string n, std::optional<ExprPtr> i);
     void dump(int indent = 0) const override;
 };
 
@@ -109,7 +110,8 @@ struct ForStmt : Stmt {
 
     StmtPtr body;
 
-    ForStmt(std::optional<StmtPtr> i, std::optional<ExprPtr> c, std::optional<ExprPtr> inc, StmtPtr b);
+    ForStmt(std::optional<StmtPtr> i, std::optional<ExprPtr> c,
+            std::optional<ExprPtr> inc, StmtPtr b);
     void dump(int indent = 0) const override;
 };
 
@@ -117,28 +119,35 @@ struct ReturnStmt : Stmt {
     Token ret_token;
     std::optional<ExprPtr> value;
 
-    ReturnStmt(const Token& t, std::optional<ExprPtr> v);
+    ReturnStmt(const Token &t, std::optional<ExprPtr> v);
     void dump(int indent = 0) const override;
 };
 
-struct FunctionParameter {
+struct FunctionParameterStmt : Stmt {
     Token type_token;
     std::string name;
 
-    FunctionParameter(const Token& p_type_token, const std::string& n);
+    FunctionParameterStmt(const Token &p_type_token, const std::string &n);
+    void dump(int indent = 0) const;
 };
 
-struct FunctionDecl{
+struct FunctionDeclStmt : Stmt {
     Token return_type;
     Token name_token;
-    std::vector<FunctionParameter> params;
-    std::unique_ptr<BlockStmt> body;
-    FunctionDecl(const Token& rt, const Token& name, std::vector<FunctionParameter> p, std::unique_ptr<BlockStmt> b);
+    std::vector<StmtPtr> params;
+    StmtPtr body;
+    FunctionDeclStmt(Token rt, Token name, std::vector<StmtPtr> p, StmtPtr b);
 
     void dump(int indent = 0) const;
 };
 
+struct FunctionCallExpr : Expr {
+    Token name_token;
+    std::vector<ExprPtr> args;
 
+    FunctionCallExpr(const Token &n, std::vector<ExprPtr> p_args);
+    void dump(int indent = 0) const;
+};
 
 struct Program {
     std::vector<StmtPtr> statements;
@@ -147,4 +156,4 @@ struct Program {
     std::unordered_map<std::string, int> var_offset_lookup;
 };
 
-#endif //CAPPUCCINO_ABSTRACTSYNTAXTREE_H
+#endif // CAPPUCCINO_ABSTRACTSYNTAXTREE_H

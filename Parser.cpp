@@ -10,6 +10,10 @@ bool Parser::isAtEnd() const { return peek().type == TOKEN_EOF; }
 
 const Token &Parser::peek() const { return tokens[pos]; }
 
+const Token &Parser::peekNext() const {
+    return isAtEnd() ? tokens[pos] : tokens[pos + 1];
+}
+
 const Token &Parser::previous() const { return tokens[pos - 1]; }
 
 const Token &Parser::advance() {
@@ -49,7 +53,22 @@ ExprPtr Parser::parsePrimary() {
     }
 
     if (match(IDENTIFIER)) {
-        return std::make_unique<IdentifierExpr>(previous());
+        Token identifierName = previous();
+        if (match(LEFT_PAREN)) {
+
+            std::vector<ExprPtr> args;
+            if (!check(RIGHT_PAREN)) {
+                do {
+                    args.push_back(parseExpression());
+                } while (match(COMMA));
+            }
+
+            consume(RIGHT_PAREN, "Exptected a ')'");
+
+            return std::make_unique<FunctionCallExpr>(std::move(identifierName),
+                                                      std::move(args));
+        }
+        return std::make_unique<IdentifierExpr>(identifierName);
     }
 
     if (match(LEFT_PAREN)) {
@@ -159,9 +178,9 @@ StmtPtr Parser::parseStatement() {
         return parseFor();
     }
 
-    if (check(KEYWORD_TYPE_FLOAT) || check(KEYWORD_TYPE_STRING) ||
-        check(KEYWORD_TYPE_INT)) {
-        return parseVarDecl();
+    if (match(KEYWORD_TYPE_FLOAT) || match(KEYWORD_TYPE_STRING) ||
+        match(KEYWORD_TYPE_INT)) {
+        return parseVarOrFunctionDecl();
     }
 
     return parseExpressionStatement();
@@ -178,11 +197,32 @@ std::stack<std::string> var_lookup;
 std::unordered_map<std::string, int> data_type_size_lookup = {{"int", 4},
                                                               {"float", 8}};
 
-StmtPtr Parser::parseVarDecl() {
-    Token varType = advance();
+StmtPtr Parser::parseVarOrFunctionDecl() {
+    Token identifierType = previous();
 
-    consume(IDENTIFIER, "Expected variable name");
-    Token varName = previous();
+    consume(IDENTIFIER, "Expected identifier name");
+    Token identifierName = previous();
+
+    if (match(LEFT_PAREN)) {
+        std::vector<StmtPtr> args;
+        if (!check(RIGHT_PAREN)) {
+            do {
+                Token arg_type = advance();
+                Token arg_name = advance();
+                args.push_back(std::make_unique<FunctionParameterStmt>(
+                    std::move(arg_type), std::move(arg_name.lexeme)));
+            } while (match(COMMA));
+        }
+
+        consume(RIGHT_PAREN, "Exptected a '(' after function definition");
+
+        consume(LEFT_CURLY, "Extected function block after definition");
+        StmtPtr block_ptr = parseBlock();
+
+        return std::make_unique<FunctionDeclStmt>(
+            std::move(identifierType), std::move(identifierName),
+            std::move(args), std::move(block_ptr));
+    }
 
     std::optional<ExprPtr> init;
 
@@ -192,13 +232,13 @@ StmtPtr Parser::parseVarDecl() {
 
     consume(SEMICOLON, "Expected ';' after initialization.");
 
-    var_offset_lookup[varName.lexeme] =
+    var_offset_lookup[identifierName.lexeme] =
         (var_lookup.empty() ? 0 : var_offset_lookup[var_lookup.top()]) +
-        data_type_size_lookup[varType.lexeme];
-    total_size_bytes += data_type_size_lookup[varType.lexeme];
-    var_lookup.push(varName.lexeme);
-    return std::make_unique<VariableDeclStmt>(varType, varName.lexeme,
-                                              std::move(init));
+        data_type_size_lookup[identifierType.lexeme];
+    total_size_bytes += data_type_size_lookup[identifierType.lexeme];
+    var_lookup.push(identifierName.lexeme);
+    return std::make_unique<VariableDeclStmt>(
+        identifierType, identifierName.lexeme, std::move(init));
 }
 
 StmtPtr Parser::parseBlock() {
@@ -247,7 +287,7 @@ StmtPtr Parser::parseFor() {
     if (!check(SEMICOLON)) {
         if (check(KEYWORD_TYPE_INT) || check(KEYWORD_TYPE_FLOAT) ||
             check(KEYWORD_TYPE_STRING)) {
-            init = parseVarDecl();
+            init = parseVarOrFunctionDecl();
         } else {
             init = parseExpressionStatement();
         }

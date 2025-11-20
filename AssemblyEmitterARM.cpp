@@ -23,13 +23,12 @@ void AssemblyEmitterARM::emitEpilogue(std::ostream &out) {
 void AssemblyEmitterARM::emitExprStmt(const ExprStmt *s, std::ostream &out,
                                       int order) {
     if (auto es = dynamic_cast<const LiteralExpr *>(s->expr.get())) {
-        if (auto intPtr = std::get_if<int>(&lit->token.fd)) {
+        if (auto intPtr = std::get_if<int>(&es->token.fd)) {
             int v = *intPtr;
-            // use v
-        } else if (auto floatPtr = std::get_if<float>(&lit->token.fd)) {
+        } else if (auto floatPtr = std::get_if<float>(&es->token.fd)) {
             float f = *floatPtr;
             // use f
-        } else if (auto strPtr = std::get_if<std::string>(&lit->token.fd)) {
+        } else if (auto strPtr = std::get_if<std::string>(&es->token.fd)) {
             const std::string &str = *strPtr;
             // use str
         }

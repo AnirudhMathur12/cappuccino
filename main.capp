@@ -1,5 +1,4 @@
-int y;
-float z = 3.4;
-for(int a = 0; a < 28; a = a + 1) {
-    y = y + a;
+
+int main() {
+    add(2, 3);
 }

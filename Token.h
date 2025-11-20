@@ -4,9 +4,9 @@
 
 #ifndef CAPPUCCINO_TOKEN_H
 #define CAPPUCCINO_TOKEN_H
+#include <iostream>
 #include <string>
 #include <vector>
-#include <iostream>
 
 enum TokenType {
     LITERAL_STRING,
@@ -40,35 +40,36 @@ enum TokenType {
     EXCL_EQUAL,
     EXCLAMATION,
     TOKEN_EOF,
+    COMMA,
+    UNDEFINED
 };
 
 inline std::string token_type_to_string(TokenType type);
-inline std::string fd_to_string(const std::variant<std::monostate, int, float, std::string>& fd);
+inline std::string
+fd_to_string(const std::variant<std::monostate, int, float, std::string> &fd);
 
 class Token {
-public:
+  public:
     Token() = default;
-    Token(const std::string& p_lexeme, int p_row, int p_col, TokenType p_type);
+    Token(const std::string &p_lexeme, int p_row, int p_col, TokenType p_type);
 
-    friend std::ostream& operator<<(std::ostream& os, const Token& tok);
+    friend std::ostream &operator<<(std::ostream &os, const Token &tok);
 
     std::string lexeme;
     int row, column;
     std::variant<std::monostate, int, float, std::string> fd;
     TokenType type;
-
 };
 
-std::ostream& operator<<(std::ostream& os, const Token& tok);
+std::ostream &operator<<(std::ostream &os, const Token &tok);
 
 class Tokenizer {
-public:
-    Tokenizer(std::string& p_src) : src(p_src) {};
+  public:
+    Tokenizer(std::string &p_src) : src(p_src) {};
 
     std::vector<Token> tokenize();
 
-
-private:
+  private:
     std::string src;
     size_t start = 0;
     size_t current = 0;
@@ -88,4 +89,4 @@ private:
     Token identifier();
 };
 
-#endif //CAPPUCCINO_TOKEN_H
+#endif // CAPPUCCINO_TOKEN_H

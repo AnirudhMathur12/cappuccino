@@ -7,7 +7,7 @@
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <file>" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <file> <args>" << std::endl;
         return 1;
     }
 
@@ -20,16 +20,16 @@ int main(int argc, char *argv[]) {
     Tokenizer t(file_content.value());
     std::vector<Token> tokens = t.tokenize();
 
-    // for (Token& token : tokens) {
-    //     std::cout << token << std::endl;
-    // }
+    for (Token &token : tokens) {
+        std::cout << token << std::endl;
+    }
 
     Parser p(tokens);
     Program prog = p.parse();
 
     prog.dump();
 
-    // for (const auto& [k, v]: prog.var_offset_lookup) {
+    // for (const auto &[k, v] : prog.var_offset_lookup) {
     //     std::cout << k << ":" << v << std::endl;
     // }
 

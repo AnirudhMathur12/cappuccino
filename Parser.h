@@ -23,6 +23,7 @@ class Parser {
     int total_size_bytes = 0;
 
     const Token &peek() const;
+    const Token &peekNext() const;
     const Token &previous() const;
     const Token &advance();
 
@@ -42,11 +43,12 @@ class Parser {
 
     StmtPtr parseStatement();
     StmtPtr parseExpressionStatement();
-    StmtPtr parseVarDecl();
+    StmtPtr parseVarOrFunctionDecl();
     StmtPtr parseBlock();
     StmtPtr parseIf();
     StmtPtr parseWhile();
     StmtPtr parseFor();
+    StmtPtr parseFunction();
 };
 
 #endif
