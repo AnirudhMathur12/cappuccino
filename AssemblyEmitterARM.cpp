@@ -4,7 +4,6 @@
 
 #include "AssemblyEmitterARM.h"
 #include "AbstractSyntaxTree.h"
-#include <memory>
 
 void AssemblyEmitterARM::emitPrologue(std::ostream &out) {
     out << "\t.section\t__Text,__text,regular,pure_instructions\n";

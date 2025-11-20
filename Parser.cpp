@@ -57,7 +57,7 @@ void Parser::consume(TokenType t, const char *msg) {
         return;
     }
 
-    throw ParseError(peek(), msg);
+    throw ParseError(previous(), msg);
 }
 
 ExprPtr Parser::parsePrimary() {
@@ -91,7 +91,7 @@ ExprPtr Parser::parsePrimary() {
         return std::make_unique<GroupingExpr>(std::move(expr));
     }
 
-    throw ParseError(peek(), "Expected expression");
+    throw ParseError(previous(), "Expected expression");
 }
 
 ExprPtr Parser::parseUnary() {
@@ -169,7 +169,7 @@ ExprPtr Parser::parseAssignment() {
                                                 std::move(right));
         }
 
-        throw ParseError(peek(), "Invalid assignment target.");
+        throw ParseError(previous(), "Invalid assignment target.");
     }
 
     return left;
