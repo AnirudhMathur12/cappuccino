@@ -1,24 +1,7 @@
-int update() {
-    while (position > 0.0) {
-        // Update velocity: v = u + at
-        velocity = velocity + gravity * dt;
-        
-        // Update position: s = s - vt
-        position = position - velocity * dt;
-
-        if (position < 0.0) {
-            position = 0.0;
-        }
-    }
-}
-
 int main() {
-    float gravity = 9.8;
-    float velocity = 0.0;
-    float position = 100.0;
-    float dt = 0.1;
+    for(int i = 0; i < 1000000000; i = i + 1) {
 
-    // Simulate falling until it hits the ground
-    update();
-    print(a+b);
+    }
+
+    return 0;
 }

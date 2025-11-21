@@ -61,6 +61,7 @@ void Parser::consume(TokenType t, const char *msg) {
 }
 
 ExprPtr Parser::parsePrimary() {
+
     if (match(LITERAL_FLOAT) || match(LITERAL_INTEGER) ||
         match(LITERAL_STRING)) {
         return std::make_unique<LiteralExpr>(previous());
@@ -175,6 +176,17 @@ ExprPtr Parser::parseAssignment() {
     return left;
 }
 
+StmtPtr Parser::parseReturnStmt() {
+    Token t = previous();
+    if (match(SEMICOLON)) {
+        return std::make_unique<ReturnStmt>(t, std::nullopt);
+    }
+
+    ExprPtr ex = parseExpression();
+    consume(SEMICOLON, "Expected';' after expression");
+    return std::make_unique<ReturnStmt>(t, std::move(ex));
+}
+
 StmtPtr Parser::parseStatement() {
     if (match(LEFT_CURLY)) {
         return parseBlock();
@@ -193,8 +205,12 @@ StmtPtr Parser::parseStatement() {
     }
 
     if (match(KEYWORD_TYPE_FLOAT) || match(KEYWORD_TYPE_STRING) ||
-        match(KEYWORD_TYPE_INT)) {
+        match(KEYWORD_TYPE_INT) || match(KEYWORD_TYPE_VOID)) {
         return parseVarOrFunctionDecl();
+    }
+
+    if (match(KEYWORD_RETURN)) {
+        return parseReturnStmt();
     }
 
     return parseExpressionStatement();
@@ -208,7 +224,7 @@ StmtPtr Parser::parseExpressionStatement() {
 }
 
 std::stack<std::string> var_lookup;
-std::unordered_map<std::string, int> data_type_size_lookup = {{"int", 4},
+std::unordered_map<std::string, int> data_type_size_lookup = {{"int", 8},
                                                               {"float", 8}};
 
 StmtPtr Parser::parseVarOrFunctionDecl() {
@@ -249,7 +265,7 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
     var_offset_lookup[identifierName.lexeme] =
         (var_lookup.empty() ? 0 : var_offset_lookup[var_lookup.top()]) +
         data_type_size_lookup[identifierType.lexeme];
-    total_size_bytes += data_type_size_lookup[identifierType.lexeme];
+    stack_size_bytes += data_type_size_lookup[identifierType.lexeme];
     var_lookup.push(identifierName.lexeme);
     return std::make_unique<VariableDeclStmt>(
         identifierType, identifierName.lexeme, std::move(init));
@@ -335,6 +351,7 @@ Program Parser::parse() {
     }
 
     prog.var_offset_lookup = var_offset_lookup;
+    prog.stack_size = stack_size_bytes;
 
     return prog;
 }

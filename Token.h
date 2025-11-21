@@ -22,6 +22,7 @@ enum TokenType {
     KEYWORD_TYPE_INT,
     KEYWORD_TYPE_FLOAT,
     KEYWORD_TYPE_STRING,
+    KEYWORD_TYPE_VOID,
     OPERATOR_EQUALITY,
     OPERATOR_MINUS,
     OPERATOR_PLUS,
@@ -45,8 +46,8 @@ enum TokenType {
 };
 
 inline std::string token_type_to_string(TokenType type);
-inline std::string
-fd_to_string(const std::variant<std::monostate, int, float, std::string> &fd);
+inline std::string fd_to_string(
+    const std::variant<std::monostate, int64_t, float, std::string> &fd);
 
 class Token {
   public:
@@ -57,7 +58,7 @@ class Token {
 
     std::string lexeme;
     int row, column;
-    std::variant<std::monostate, int, float, std::string> fd;
+    std::variant<std::monostate, int64_t, float, std::string> fd;
     TokenType type;
 };
 

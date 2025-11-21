@@ -20,11 +20,12 @@ class Parser {
 
     Program parse();
 
+    int stack_size_bytes = 0;
+    std::unordered_map<std::string, int> var_offset_lookup;
+
   private:
     const std::vector<Token> &tokens;
     size_t pos = 0;
-    std::unordered_map<std::string, int> var_offset_lookup;
-    int total_size_bytes = 0;
 
     const Token &peek() const;
     const Token &peekNext() const;
@@ -53,6 +54,7 @@ class Parser {
     StmtPtr parseWhile();
     StmtPtr parseFor();
     StmtPtr parseFunction();
+    StmtPtr parseReturnStmt();
 };
 
 #endif

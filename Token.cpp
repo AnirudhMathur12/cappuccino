@@ -13,7 +13,7 @@ Token::Token(const std::string &p_lexeme, int p_row, int p_col,
     if (type == TokenType::LITERAL_STRING) {
         fd = p_lexeme.substr(1, lexeme.length() - 2);
     } else if (type == TokenType::LITERAL_INTEGER) {
-        fd = std::stoi(p_lexeme);
+        fd = static_cast<int64_t>(std::stoll(p_lexeme));
     } else if (type == TokenType::LITERAL_FLOAT) {
         fd = std::stof(p_lexeme);
     }
@@ -47,6 +47,8 @@ inline std::string token_type_to_string(TokenType type) {
         return "KEYWORD_TYPE_FLOAT";
     case KEYWORD_TYPE_STRING:
         return "KEYWORD_TYPE_STRING";
+    case KEYWORD_TYPE_VOID:
+        return "KEYWORD_TYPE_VOID";
     case OPERATOR_EQUALITY:
         return "OPERATOR_EQUALITY";
     case OPERATOR_MINUS:
@@ -89,15 +91,15 @@ inline std::string token_type_to_string(TokenType type) {
     return "<UNKNOWN_TOKEN>";
 }
 
-inline std::string
-fd_to_string(const std::variant<std::monostate, int, float, std::string> &v) {
+inline std::string fd_to_string(
+    const std::variant<std::monostate, int64_t, float, std::string> &v) {
     return std::visit(
         [](auto &&value) -> std::string {
             using T = std::decay_t<decltype(value)>;
 
             if constexpr (std::is_same_v<T, std::monostate>)
                 return "NoValue";
-            else if constexpr (std::is_same_v<T, int>)
+            else if constexpr (std::is_same_v<T, int64_t>)
                 return std::to_string(value);
             else if constexpr (std::is_same_v<T, float>)
                 return std::to_string(value);
@@ -253,7 +255,7 @@ std::unordered_map<std::string, TokenType> keywords = {
     {"int", TokenType::KEYWORD_TYPE_INT},
     {"float", TokenType::KEYWORD_TYPE_FLOAT},
     {"string", TokenType::KEYWORD_TYPE_STRING},
-};
+    {"void", TokenType::KEYWORD_TYPE_VOID}};
 
 Token Tokenizer::identifier() {
     while ((isalnum(peek()) || peek() == '_') && !isAtEnd())

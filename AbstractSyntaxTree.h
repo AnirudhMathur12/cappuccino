@@ -24,7 +24,7 @@ using StmtPtr = std::unique_ptr<Stmt>;
 
 struct LiteralExpr : Expr {
     Token token;
-    std::variant<int, float, std::string> value;
+    std::variant<int64_t, float, std::string> value;
 
     LiteralExpr(const Token &t);
     void dump(int indent = 0) const override;
@@ -154,6 +154,7 @@ struct Program {
 
     void dump() const;
     std::unordered_map<std::string, int> var_offset_lookup;
+    int stack_size = 0;
 };
 
 #endif // CAPPUCCINO_ABSTRACTSYNTAXTREE_H

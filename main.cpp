@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "AbstractSyntaxTree.h"
+#include "AssemblyEmitterARM.h"
 #include "Parser.h"
 #include "Token.h"
 #include "utils.h"
@@ -48,11 +49,21 @@ int main(int argc, char *argv[]) {
 
         if (show_ast)
             prog.dump();
-    }
 
-    // for (const auto &[k, v] : prog.var_offset_lookup) {
-    //     std::cout << k << ":" << v << std::endl;
-    // }
+        for (const auto &[k, v] : prog.var_offset_lookup) {
+            std::cout << k << ":" << v << std::endl;
+        }
+
+        AssemblyEmitterARM asmarm("main.capp", prog.var_offset_lookup,
+                                  prog.stack_size);
+        asmarm.emitProgram(prog);
+        asmarm.output_file.close();
+
+        system("as -o main.o main.s");
+        system("ld -o main main.o -e _main -arch arm64 -lSystem -syslibroot "
+               "`xcrun -sdk "
+               "macosx --show-sdk-path`");
+    }
 
     return 0;
 }
