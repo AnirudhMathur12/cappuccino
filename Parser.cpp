@@ -83,7 +83,8 @@ ExprPtr Parser::parsePrimary() {
             return std::make_unique<FunctionCallExpr>(std::move(identifierName),
                                                       std::move(args));
         }
-        return std::make_unique<IdentifierExpr>(identifierName);
+        int off = var_offset_lookup[identifierName.lexeme];
+        return std::make_unique<IdentifierExpr>(identifierName, off);
     }
 
     if (match(LEFT_PAREN)) {
@@ -265,10 +266,14 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
     var_offset_lookup[identifierName.lexeme] =
         (var_lookup.empty() ? 0 : var_offset_lookup[var_lookup.top()]) +
         data_type_size_lookup[identifierType.lexeme];
+
     stack_size_bytes += data_type_size_lookup[identifierType.lexeme];
+
     var_lookup.push(identifierName.lexeme);
+
     return std::make_unique<VariableDeclStmt>(
-        identifierType, identifierName.lexeme, std::move(init));
+        identifierType, identifierName.lexeme, std::move(init),
+        stack_size_bytes);
 }
 
 StmtPtr Parser::parseBlock() {

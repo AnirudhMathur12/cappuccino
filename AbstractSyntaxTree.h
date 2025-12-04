@@ -33,8 +33,9 @@ struct LiteralExpr : Expr {
 struct IdentifierExpr : Expr {
     Token token;
     std::string name;
+    int offset;
 
-    IdentifierExpr(Token t);
+    IdentifierExpr(Token t, int off);
     void dump(int indent = 0) const override;
 };
 
@@ -74,8 +75,10 @@ struct VariableDeclStmt : Stmt {
     Token type_token;
     std::string name;
     std::optional<ExprPtr> initializer;
+    int offset;
 
-    VariableDeclStmt(const Token &t, std::string n, std::optional<ExprPtr> i);
+    VariableDeclStmt(const Token &t, std::string n, std::optional<ExprPtr> i,
+                     int off);
     void dump(int indent = 0) const override;
 };
 

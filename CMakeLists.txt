@@ -20,6 +20,4 @@ add_executable(cappuccino main.cpp
         AbstractSyntaxTree.h
         Parser.cpp
         Parser.h
-        AssemblyEmitterARM.cpp
-        AssemblyEmitterARM.h
 )

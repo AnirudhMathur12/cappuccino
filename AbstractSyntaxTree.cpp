@@ -39,11 +39,13 @@ void LiteralExpr::dump(int indent) const {
     std::cout << ")" << std::endl;
 }
 
-IdentifierExpr::IdentifierExpr(Token t) : token(t), name(t.lexeme) {}
+IdentifierExpr::IdentifierExpr(Token t, int off)
+    : token(t), name(t.lexeme), offset(off) {}
 
 void IdentifierExpr::dump(int indent) const {
     std::string pad(indent, ' ');
-    std::cout << pad << "Identifier(" << name << ")\n";
+    std::cout << pad << "Identifier(" << name << " [offset: " << offset
+              << "])\n";
 }
 
 UnaryExpr::UnaryExpr(Token t, ExprPtr r) : op(t), right(std::move(r)) {}
@@ -81,13 +83,14 @@ void ExprStmt::dump(int indent) const {
 }
 
 VariableDeclStmt::VariableDeclStmt(const Token &t, std::string n,
-                                   std::optional<ExprPtr> i)
-    : type_token(t), name(std::move(n)), initializer(std::move(i)) {}
+                                   std::optional<ExprPtr> i, int off)
+    : type_token(t), name(std::move(n)), initializer(std::move(i)),
+      offset(off) {}
 
 void VariableDeclStmt::dump(int indent) const {
     std::string pad(indent, ' ');
     std::cout << pad << "VariableDecl(type=" << type_token.lexeme
-              << ", name=" << name << ")\n";
+              << ", name=" << name << ", offset=" << offset << ")\n";
     if (initializer) {
         std::cout << pad << "  Initializer:\n";
         (*initializer)->dump(indent + 4);
