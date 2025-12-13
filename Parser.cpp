@@ -240,6 +240,11 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
             do {
                 Token arg_type = advance();
                 Token arg_name = advance();
+
+                stack_size_bytes += 8;
+                var_offset_lookup[arg_name.lexeme] = stack_size_bytes;
+                var_lookup.push(arg_name.lexeme);
+
                 args.push_back(std::make_unique<FunctionParameterStmt>(
                     std::move(arg_type), std::move(arg_name.lexeme)));
             } while (match(COMMA));

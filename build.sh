@@ -13,6 +13,6 @@ cmake .. && make
 
 
 if [[ $status -eq 0 ]]; then
-    read files
-    eval "./cappuccino $files"
+    read args
+    eval "./cappuccino $args"
 fi

@@ -1,57 +1,96 @@
 #include <iostream>
 
 #include "AbstractSyntaxTree.h"
+#include "CodeGen.h"
 #include "Parser.h"
 #include "Token.h"
 #include "utils.h"
 
 bool show_tokens = false, show_ast = false;
+std::string output_name = "a.out";
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <file> <args>" << std::endl;
+        std::cerr << "Usage: " << argv[0]
+                  << " <file.capp> [-o <output_binary>] [--tokens] [--ast]"
+                  << std::endl;
         return 1;
     }
 
-    std::vector<std::string> files;
+    std::vector<std::string> source_files;
 
     for (int i = 1; i < argc; i++) {
-        std::string arg = static_cast<std::string>(argv[i]);
-        if (arg.starts_with("--")) {
-            if (arg == "--tokens") {
-                show_tokens = true;
-            } else if (arg == "--ast") {
-                show_ast = true;
+        std::string arg = argv[i];
+        if (arg == "--tokens") {
+            show_tokens = true;
+        } else if (arg == "--ast") {
+            show_ast = true;
+        } else if (arg == "-o") {
+            if (i + 1 < argc) {
+                output_name = argv[++i];
+            } else {
+                std::cerr << "Error: -o requires a filename argument."
+                          << std::endl;
+                return 1;
             }
         } else {
-
-            std::optional<std::string> file_content = read_file(arg);
-
-            if (!file_content.has_value())
-                return 1;
-            files.push_back(file_content.value());
+            source_files.push_back(arg);
         }
     }
 
-    for (auto s : files) {
+    if (source_files.empty()) {
+        std::cerr << "Error: No input files provided." << std::endl;
+        return 1;
+    }
 
-        Tokenizer t(s);
-        std::vector<Token> tokens = t.tokenize();
-        if (show_tokens) {
-            for (Token &token : tokens) {
-                std::cout << token << std::endl;
-            }
+    std::string source_path = source_files[0];
+    std::optional<std::string> file_content = read_file(source_path);
+
+    if (!file_content.has_value()) {
+        return 1;
+    }
+
+    Tokenizer t(file_content.value());
+    std::vector<Token> tokens = t.tokenize();
+
+    if (show_tokens) {
+        for (Token &token : tokens) {
+            std::cout << token << std::endl;
         }
+    }
 
-        Parser p(tokens);
-        Program prog = p.parse();
+    Parser p(tokens);
+    Program prog = p.parse();
 
-        if (show_ast)
-            prog.dump();
+    if (show_ast)
+        prog.dump();
 
-        for (const auto &[k, v] : prog.var_offset_lookup) {
-            std::cout << k << ":" << v << std::endl;
-        }
+    std::ofstream asmFile("output.s");
+    if (!asmFile.is_open()) {
+        std::cerr << "Failed to write assembly file." << std::endl;
+        return 1;
+    }
+
+    CodeGen generator(prog, asmFile);
+    generator.generate();
+    asmFile.close();
+
+    std::string cmd = "clang -o " + output_name + " output.s stdlib.c";
+
+    std::ifstream libCheck("stdlib.c");
+    if (!libCheck.good()) {
+        std::cerr << "Warning: stdlib.c not found in current directory. "
+                  << "Linking might fail if you use print()." << std::endl;
+    }
+
+    std::cout << "Compiling binary..." << std::endl;
+    int ret = std::system(cmd.c_str());
+
+    if (ret == 0) {
+        std::cout << "Build successful: ./" << output_name << std::endl;
+    } else {
+        std::cerr << "Build failed. Check clang errors above." << std::endl;
+        return 1;
     }
 
     return 0;

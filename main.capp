@@ -1,6 +1,30 @@
 int main() {
-    for(int i = 0; i < 1000000000; i = i + 1) {
+    print_s("I have picked a number between 0 and 100.");
+    
+    rand_seed();
+    int secret = rand_int(100);
+    int guess = -1;
+    int tries = 0;
 
+    while (guess != secret) {
+        print_s("Enter your guess:");
+        guess = input(); // Calls C's scanf
+        
+        tries = tries + 1;
+
+        if (guess < secret) {
+            print_s("Too Low!");
+        } 
+        
+        if (guess > secret) {
+            print_s("Too High!");
+        }
+        
+        if (guess == secret) {
+            print_s("CORRECT!");
+            print_s("Total tries:");
+            print(tries);
+        }
     }
 
     return 0;
