@@ -32,7 +32,7 @@ You'll get a binary called `cappuccino`.
 ./cappuccino <file.capp> [-o <output-binary>] [--tokens] [--ast]
 ```
 ## Syntax
-The syntax on how to write code in Cappuccino is outlines [here](syntax.md).
+The syntax on how to write code in Cappuccino is outlined [here](syntax.md).
 
 I have attached some examples of cappuccino code in the [examples directory](examples/). 
 
