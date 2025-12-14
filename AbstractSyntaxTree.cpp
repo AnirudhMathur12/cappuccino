@@ -39,13 +39,13 @@ void LiteralExpr::dump(int indent) const {
     std::cout << ")" << std::endl;
 }
 
-IdentifierExpr::IdentifierExpr(Token t, int off)
-    : token(t), name(t.lexeme), offset(off) {}
+IdentifierExpr::IdentifierExpr(Token t, int off, std::string type)
+    : token(t), name(t.lexeme), offset(off), type(type) {} // Initialize type
 
 void IdentifierExpr::dump(int indent) const {
     std::string pad(indent, ' ');
     std::cout << pad << "Identifier(" << name << " [offset: " << offset
-              << "])\n";
+              << ", type: " << type << "])\n"; // Dump type
 }
 
 UnaryExpr::UnaryExpr(Token t, ExprPtr r) : op(t), right(std::move(r)) {}

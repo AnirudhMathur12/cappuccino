@@ -2,9 +2,14 @@
 #include "AbstractSyntaxTree.h"
 #include "Token.h"
 #include <iostream>
+#include <map>
 #include <memory>
 #include <sstream>
 #include <vector>
+
+// Global shadow stacks to track variable states for scoping/shadowing
+static std::map<std::string, std::vector<int>> shadow_offset_stack;
+static std::map<std::string, std::vector<std::string>> shadow_type_stack;
 
 ParseError::ParseError(const Token &tok, const std::string &msg)
     : std::runtime_error(format_message(tok, msg)), token(tok) {}
@@ -84,7 +89,8 @@ ExprPtr Parser::parsePrimary() {
                                                       std::move(args));
         }
         int off = var_offset_lookup[identifierName.lexeme];
-        return std::make_unique<IdentifierExpr>(identifierName, off);
+        std::string type = var_type_lookup[identifierName.lexeme];
+        return std::make_unique<IdentifierExpr>(identifierName, off, type);
     }
 
     if (match(LEFT_PAREN)) {
@@ -244,6 +250,11 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
                   << " ===" << std::endl;
 
         var_type_lookup[identifierName.lexeme] = identifierType.lexeme;
+
+        // Track parameters so we can remove them after the function body is
+        // parsed
+        std::vector<std::string> params_declared;
+
         std::vector<StmtPtr> args;
         if (!check(RIGHT_PAREN)) {
             do {
@@ -260,6 +271,8 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
                 var_type_lookup[arg_name.lexeme] = arg_type.lexeme;
                 var_lookup.push(arg_name.lexeme);
 
+                params_declared.push_back(arg_name.lexeme); // Track param
+
                 std::cout << "  Param: " << arg_name.lexeme << " at offset "
                           << stack_size_bytes << std::endl;
 
@@ -271,21 +284,39 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
 
         consume(RIGHT_PAREN, "Exptected a '(' after function definition");
         consume(LEFT_CURLY, "Extected function block after definition");
+
         StmtPtr block_ptr = parseBlock();
 
-        // SAVE this function's stack size
+        // SAVE this function's stack size for CodeGen
         int function_stack_size = stack_size_bytes;
 
         std::cout << "  Function stack size: " << function_stack_size
                   << std::endl;
 
-        // Restore stack size for next function
+        // --- CLEAN UP PARAMETERS ---
+        // parseBlock only cleaned up variables inside the block.
+        // We must manually remove the function parameters now to prevent them
+        // from leaking into the global scope or next function.
+        for (const std::string &param : params_declared) {
+            // Remove from var_lookup stack if it's the top element
+            if (!var_lookup.empty() && var_lookup.top() == param) {
+                var_lookup.pop();
+            }
+            // Erase from maps
+            var_offset_lookup.erase(param);
+            var_type_lookup.erase(param);
+
+            // Clean up scoped name alias
+            std::string scoped = identifierName.lexeme + "::" + param;
+            var_offset_lookup.erase(scoped);
+        }
+
+        // Restore stack size for next function (reset to 0 effectively)
         stack_size_bytes = saved_stack_size;
 
         return std::make_unique<FunctionDeclStmt>(
             std::move(identifierType), std::move(identifierName),
-            std::move(args), std::move(block_ptr),
-            function_stack_size); // Pass stack size!
+            std::move(args), std::move(block_ptr), function_stack_size);
     }
 
     std::optional<ExprPtr> init;
@@ -294,10 +325,22 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
     }
     consume(SEMICOLON, "Expected ';' after initialization.");
 
+    // Check for shadowing
+    if (var_offset_lookup.find(identifierName.lexeme) !=
+        var_offset_lookup.end()) {
+        // Save the OLD offset and type onto the shadow stack
+        shadow_offset_stack[identifierName.lexeme].push_back(
+            var_offset_lookup[identifierName.lexeme]);
+        shadow_type_stack[identifierName.lexeme].push_back(
+            var_type_lookup[identifierName.lexeme]);
+    }
+
+    // Calculate new offset
     stack_size_bytes += data_type_size_lookup[identifierType.lexeme];
     var_offset_lookup[identifierName.lexeme] = stack_size_bytes;
 
     var_type_lookup[identifierName.lexeme] = identifierType.lexeme;
+
     var_lookup.push(identifierName.lexeme);
 
     std::cout << "  Var: " << identifierName.lexeme << " at offset "
@@ -309,6 +352,9 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
 }
 
 StmtPtr Parser::parseBlock() {
+
+    size_t vars_before_block = var_lookup.size();
+
     std::vector<StmtPtr> stmts;
 
     while (!check(RIGHT_CURLY) && !isAtEnd()) {
@@ -316,6 +362,26 @@ StmtPtr Parser::parseBlock() {
     }
 
     consume(RIGHT_CURLY, "Expected '}' after block");
+
+    // Unwind variables declared in this block
+    while (var_lookup.size() > vars_before_block) {
+        std::string name = var_lookup.top();
+        var_lookup.pop();
+
+        // Remove the current definition
+        var_offset_lookup.erase(name);
+        var_type_lookup.erase(name);
+
+        // Restore shadowed definition if it exists in the shadow stack
+        if (!shadow_offset_stack[name].empty()) {
+            var_offset_lookup[name] = shadow_offset_stack[name].back();
+            shadow_offset_stack[name].pop_back();
+        }
+        if (!shadow_type_stack[name].empty()) {
+            var_type_lookup[name] = shadow_type_stack[name].back();
+            shadow_type_stack[name].pop_back();
+        }
+    }
 
     return std::make_unique<BlockStmt>(std::move(stmts));
 }
@@ -349,6 +415,9 @@ StmtPtr Parser::parseWhile() {
 StmtPtr Parser::parseFor() {
     consume(LEFT_PAREN, "Expected '(' after for");
 
+    // Track variables declared in the initializer (e.g., int i = 0)
+    size_t vars_before_loop = var_lookup.size();
+
     std::optional<StmtPtr> init;
 
     if (!check(SEMICOLON)) {
@@ -374,6 +443,24 @@ StmtPtr Parser::parseFor() {
 
     StmtPtr body = parseStatement();
 
+    // Clean up loop variables (e.g., 'i') after the loop body
+    while (var_lookup.size() > vars_before_loop) {
+        std::string name = var_lookup.top();
+        var_lookup.pop();
+        var_offset_lookup.erase(name);
+        var_type_lookup.erase(name);
+
+        // Restore shadowed vars if any
+        if (!shadow_offset_stack[name].empty()) {
+            var_offset_lookup[name] = shadow_offset_stack[name].back();
+            shadow_offset_stack[name].pop_back();
+        }
+        if (!shadow_type_stack[name].empty()) {
+            var_type_lookup[name] = shadow_type_stack[name].back();
+            shadow_type_stack[name].pop_back();
+        }
+    }
+
     return std::make_unique<ForStmt>(std::move(init), std::move(cond),
                                      std::move(post), std::move(body));
 }
@@ -381,6 +468,7 @@ StmtPtr Parser::parseFor() {
 ExprPtr Parser::parseExpression() { return parseAssignment(); }
 
 Program Parser::parse() {
+    // Initialize standard library types
     var_type_lookup["input_f"] = "float";
     var_type_lookup["sqrt_f"] = "float";
     var_type_lookup["sin_f"] = "float";

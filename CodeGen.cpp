@@ -117,10 +117,7 @@ void CodeGen::visitFunctionDecl(const FunctionDeclStmt *stmt) {
             std::cout << "  Param '" << p->name << "' using offset: " << offset
                       << std::endl;
 
-            std::string paramType = "int";
-            if (prog.var_type_lookup.count(p->name)) {
-                paramType = prog.var_type_lookup.at(p->name);
-            }
+            std::string paramType = p->type_token.lexeme;
 
             if (paramType == "float") {
                 std::string reg = "d" + std::to_string(i);
@@ -199,10 +196,7 @@ void CodeGen::visitLiteral(const LiteralExpr *expr) {
 }
 
 void CodeGen::visitIdentifier(const IdentifierExpr *expr) {
-    std::string type = "int";
-    if (prog.var_type_lookup.count(expr->name)) {
-        type = prog.var_type_lookup.at(expr->name);
-    }
+    std::string type = expr->type;
 
     if (type == "float") {
         emit("ldur d0, [x29, #-" + std::to_string(expr->offset) + "]");
@@ -220,7 +214,7 @@ void CodeGen::visitAssignment(const BinaryExpr *expr) {
 
     genExpr(expr->right.get());
 
-    std::string varType = "int";
+    std::string varType = ident->type;
     if (prog.var_type_lookup.count(ident->name)) {
         varType = prog.var_type_lookup.at(ident->name);
     }

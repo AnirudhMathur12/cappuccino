@@ -34,8 +34,9 @@ struct IdentifierExpr : Expr {
     Token token;
     std::string name;
     int offset;
+    std::string type;
 
-    IdentifierExpr(Token t, int off);
+    IdentifierExpr(Token t, int off, std::string type);
     void dump(int indent = 0) const override;
 };
 
