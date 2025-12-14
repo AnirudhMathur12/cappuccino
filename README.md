@@ -32,47 +32,7 @@ You'll get a binary called `cappuccino`.
 ./cappuccino <file.capp> [-o <output-binary>] [--tokens] [--ast]
 ```
 
-## Writing code in Cappuccino
-Cappuccino's syntax is simple and familiar if you know C or C-like langauges. Every statement needs to be terminated with a semicolon, like a real langauge. 
-### Variables
-```capp
-int x = 10;
-float pi = 3.14;
-string name = "hi!"
-```
-
-### Expressions & Operators
-```capp
-int result = x * (y + 5);
-```
-
-### Control Flow
-```capp
-if(x > 0) {
-  print(x);
-} else {
-  print(0);
-}
-```
-
-### Functions
-```capp
-float abs(float x) {
-  if(x < 0.0) {
-    return -x;
-  }
-  return x;
-}
-```
-
-### Loops
-```capp
-while(i < 10) {
-  i = i - 2;
-}
-```
-
-I have attached some examples in the examples directory. 
+I have attached some examples of cappuccino in the [examples](examples/) directory. 
 
 ## How it works
 - The lexer turns characters into tokens
@@ -85,7 +45,7 @@ I have attached some examples in the examples directory.
 Because I like how "Java" sounds. And I like coffee.
 ### Why is the syntax almost exactly like C?
 I just really liked C's syntax.
+### Really? Because it feels like you're just lazy.
+No comments.
 ### Why did you make this project?
 I just really wanted to write a compiler ever since I saw one of those videos that explained how the LLVM compiler works. Seeing all the different parts of a compiler really made it seem like I could make one too.
-### Are these questions really frequently asked?
-No, I just wanted to dicuss these points.
