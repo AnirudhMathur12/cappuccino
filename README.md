@@ -1,5 +1,5 @@
 # Cappuccino
-A small hobby programming language compiler written in C++. Built to learn the ins and outs of a compiler becuase they're straight up magic.
+A small hobby programming language compiler written in C++. Built to learn the ins and outs of a compiler because they're straight up magic.
 
 ## Overview
 This project is the compiler for a small language called Cappuccino. It goes from source code ->
