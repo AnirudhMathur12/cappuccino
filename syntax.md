@@ -6,13 +6,13 @@ Cappuccino is a statically-typed, C-like programming language. This document out
 A `main` function is required as an entry point. Statements are executed sequentially. Much like C, a lot of the structure comes from the form it takes when it compiles down to assembly, like, requiring a main function because `_main` is required as an entry point.
 
 ```capp
-// This is not valid code.
+// This is valid code.
 int main() {
   int x = 10;
   return 0;
 }
 ```
-Statements must be terminated with a semicolon(`;`)
+Statements must be terminated with a semicolon(`;`) because this is a real language.
 
 ## 2. Comments
 Single-line comments are supported using `//`
