@@ -47,8 +47,6 @@ _print_f:
     stp x29, x30, [sp, #-16]!
     mov x29, sp
     
-    // printf("%f\n", val)
-    // d0 already contains the double value - no conversion needed
     str d0, [sp, #-16]!     ; Apple: Float arg on stack
     
     adrp x0, l_fmt_flt@PAGE
@@ -68,12 +66,6 @@ _input_f:
     stp x29, x30, [sp, #16]
     add x29, sp, #16
     
-    // 1. Prompt
-    adrp x0, l_prompt@PAGE
-    add x0, x0, l_prompt@PAGEOFF
-    bl _printf
-
-    // 2. Scanf("%lf", &slot)
     add x1, sp, #8          ; Standard: Pointer in x1
     str x1, [sp]            ; Apple: Pointer on stack
     
@@ -82,7 +74,6 @@ _input_f:
     
     bl _scanf
 
-    // 3. Return result
     ldr d0, [sp, #8]
     
     ldp x29, x30, [sp, #16]
@@ -96,11 +87,6 @@ _input_i:
     sub sp, sp, #32
     stp x29, x30, [sp, #16]
     add x29, sp, #16
-
-    // Prompt
-    adrp x0, l_prompt@PAGE
-    add x0, x0, l_prompt@PAGEOFF
-    bl _printf
 
     // Scanf
     add x1, sp, #8
@@ -144,7 +130,6 @@ l_fmt_int:      .asciz "%ld\n"
 l_fmt_flt:      .asciz "%f\n"
 l_fmt_scan_int: .asciz "%ld"
 l_fmt_scan_flt: .asciz "%lf"
-l_prompt:       .asciz ">> "
 )";
 
 #endif

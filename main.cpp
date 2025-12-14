@@ -44,6 +44,14 @@ int main(int argc, char *argv[]) {
     }
 
     std::string source_path = source_files[0];
+
+    if (source_path.length() < 5 ||
+        source_path.substr(source_path.length() - 5) != ".capp") {
+        std::cerr << "Error: Input file must have a .capp extension."
+                  << std::endl;
+        return 1;
+    }
+
     std::optional<std::string> file_content = read_file(source_path);
 
     if (!file_content.has_value()) {

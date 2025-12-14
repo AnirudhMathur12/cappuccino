@@ -1,0 +1,33 @@
+void solve(float a, float b, float c) {
+    if (a == 0.0) {
+        print_s("The function is not quadratic");
+        return;
+    }
+
+    float D = (b*b) - (4.0*a*c);
+    if(D < 0.0) {
+        print_s("No real roots");
+    } else {
+        float root1 = (-b + sqrt_f(D))/(2.0*a);
+        float root2 = (-b - sqrt_f(D))/(2.0*a);
+        print_f(root1);
+        print_f(root2);
+    }
+}
+
+int main() {
+    print_s("Solves: ax^2 + bx + c = 0");
+
+    print_s("Enter coefficient a:");
+    float a = input_f();
+
+    print_s("Enter coefficient b:");
+    float b = input_f();
+
+    print_s("Enter coefficient c:");
+    float c = input_f();
+
+    solve(a, b, c);
+
+    return 0;
+}
