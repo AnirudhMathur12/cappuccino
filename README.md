@@ -31,8 +31,10 @@ You'll get a binary called `cappuccino`.
 ```bash
 ./cappuccino <file.capp> [-o <output-binary>] [--tokens] [--ast]
 ```
+## Syntax
+The syntax on how to write code in Cappuccino is outlines [here](syntax.md).
 
-I have attached some examples of cappuccino in the [examples](examples/) directory. 
+I have attached some examples of cappuccino code in the [examples directory](examples/). 
 
 ## How it works
 - The lexer turns characters into tokens
