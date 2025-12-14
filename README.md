@@ -45,7 +45,8 @@ I have attached some examples of cappuccino code in the [examples directory](exa
 ## Benchmarks
  One of the few benchmarks I can perform in this language is calculating prime numbers upto 10 million
 
-<img width="1914" height="956" alt="chart-3" src="https://github.com/user-attachments/assets/622a427f-fb63-44ff-8882-18c355bd347b" />
+<img width="1914" height="956" alt="chart-4" src="https://github.com/user-attachments/assets/311775d0-e7f2-4133-98ac-f55508bbad44" />
+
 
 From the perspective of a compiled language, it's not that performant. The stack machine overhead is pretty apparent, but hey, it's at least faster than Python, not that that's a big achievement.
 
