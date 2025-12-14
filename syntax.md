@@ -107,7 +107,7 @@ for (int i = 0; i < 10; i = i + 1) {
 ```
 
 >**Note**
->Since there is not `++` operator, increments must be written as assignments (e.g., `i = i + 1`).
+>Since there is no `++` operator, increments must be written as assignments (e.g., `i = i + 1`).
 
 ## 7. Functions
 Functions are defined with a return type, a name, parameters, and a body block.
