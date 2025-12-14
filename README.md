@@ -42,6 +42,13 @@ I have attached some examples of cappuccino code in the [examples directory](exa
 - CodeGen travels through the AST and spits out ARM64 assembly.
 - The clang assembler + linked take over and give an executable.
 
+## Benchmarks
+ One of the few benchmarks I can perform in this language is calculating prime numbers upto 10 million
+
+<img width="1914" height="956" alt="chart-3" src="https://github.com/user-attachments/assets/622a427f-fb63-44ff-8882-18c355bd347b" />
+
+From the perspective of a compiled language, it's not that performant. The stack machine overhead is pretty apparent, but hey, it's at least faster than Python, not that that's a big achievement.
+
 ## FAQs
 ### Why is called Cappuccino?
 Because I like how "Java" sounds. And I like coffee.
