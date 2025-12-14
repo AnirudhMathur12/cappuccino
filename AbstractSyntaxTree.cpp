@@ -170,8 +170,8 @@ void ReturnStmt::dump(int indent) const {
 }
 
 FunctionParameterStmt::FunctionParameterStmt(const Token &p_type_token,
-                                             const std::string &n)
-    : type_token(p_type_token), name(n) {}
+                                             const std::string &n, int off)
+    : type_token(p_type_token), name(n), offset(off) {}
 
 void FunctionParameterStmt::dump(int indent) const {
     std::string pad(indent, ' ');
@@ -180,9 +180,9 @@ void FunctionParameterStmt::dump(int indent) const {
 }
 
 FunctionDeclStmt::FunctionDeclStmt(Token rt, Token name, std::vector<StmtPtr> p,
-                                   StmtPtr b)
+                                   StmtPtr b, int stack)
     : return_type(std::move(rt)), name_token(std::move(name)),
-      params(std::move(p)), body(std::move(b)) {}
+      params(std::move(p)), body(std::move(b)), stack_size(stack) {}
 
 void FunctionDeclStmt::dump(int indent) const {
     std::string pad(indent, ' ');

@@ -22,6 +22,7 @@ class Parser {
 
     int stack_size_bytes = 0;
     std::unordered_map<std::string, int> var_offset_lookup;
+    std::unordered_map<std::string, std::string> var_type_lookup;
 
   private:
     const std::vector<Token> &tokens;
@@ -30,6 +31,7 @@ class Parser {
     const Token &peek() const;
     const Token &peekNext() const;
     const Token &previous() const;
+
     const Token &advance();
 
     bool isAtEnd() const;

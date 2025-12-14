@@ -19,7 +19,9 @@ class CodeGen {
     int label_counter = 0;
     std::vector<std::pair<std::string, std::string>> string_literals;
 
+    std::string current_type = "int";
     std::string nextLabel(const std::string &prefix);
+    int current_func_stack_size = 0;
 
     void emit(const std::string &instr);
 

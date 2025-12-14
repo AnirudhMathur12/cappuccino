@@ -230,11 +230,20 @@ std::unordered_map<std::string, int> data_type_size_lookup = {{"int", 8},
 
 StmtPtr Parser::parseVarOrFunctionDecl() {
     Token identifierType = previous();
-
     consume(IDENTIFIER, "Expected identifier name");
     Token identifierName = previous();
 
     if (match(LEFT_PAREN)) {
+        // Save the current stack offset to restore after this function
+        int saved_stack_size = stack_size_bytes;
+
+        // Start fresh stack for this function
+        stack_size_bytes = 0;
+
+        std::cout << "=== Parsing function: " << identifierName.lexeme
+                  << " ===" << std::endl;
+
+        var_type_lookup[identifierName.lexeme] = identifierType.lexeme;
         std::vector<StmtPtr> args;
         if (!check(RIGHT_PAREN)) {
             do {
@@ -242,39 +251,57 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
                 Token arg_name = advance();
 
                 stack_size_bytes += 8;
+
+                std::string scoped_name =
+                    identifierName.lexeme + "::" + arg_name.lexeme;
+                var_offset_lookup[scoped_name] = stack_size_bytes;
                 var_offset_lookup[arg_name.lexeme] = stack_size_bytes;
+
+                var_type_lookup[arg_name.lexeme] = arg_type.lexeme;
                 var_lookup.push(arg_name.lexeme);
 
+                std::cout << "  Param: " << arg_name.lexeme << " at offset "
+                          << stack_size_bytes << std::endl;
+
                 args.push_back(std::make_unique<FunctionParameterStmt>(
-                    std::move(arg_type), std::move(arg_name.lexeme)));
+                    std::move(arg_type), std::move(arg_name.lexeme),
+                    stack_size_bytes));
             } while (match(COMMA));
         }
 
         consume(RIGHT_PAREN, "Exptected a '(' after function definition");
-
         consume(LEFT_CURLY, "Extected function block after definition");
         StmtPtr block_ptr = parseBlock();
 
+        // SAVE this function's stack size
+        int function_stack_size = stack_size_bytes;
+
+        std::cout << "  Function stack size: " << function_stack_size
+                  << std::endl;
+
+        // Restore stack size for next function
+        stack_size_bytes = saved_stack_size;
+
         return std::make_unique<FunctionDeclStmt>(
             std::move(identifierType), std::move(identifierName),
-            std::move(args), std::move(block_ptr));
+            std::move(args), std::move(block_ptr),
+            function_stack_size); // Pass stack size!
     }
 
     std::optional<ExprPtr> init;
-
     if (match(OPERATOR_ASSIGNMENT)) {
         init = parseExpression();
     }
-
     consume(SEMICOLON, "Expected ';' after initialization.");
 
-    var_offset_lookup[identifierName.lexeme] =
-        (var_lookup.empty() ? 0 : var_offset_lookup[var_lookup.top()]) +
-        data_type_size_lookup[identifierType.lexeme];
-
     stack_size_bytes += data_type_size_lookup[identifierType.lexeme];
+    var_offset_lookup[identifierName.lexeme] = stack_size_bytes;
 
+    var_type_lookup[identifierName.lexeme] = identifierType.lexeme;
     var_lookup.push(identifierName.lexeme);
+
+    std::cout << "  Var: " << identifierName.lexeme << " at offset "
+              << stack_size_bytes << std::endl;
 
     return std::make_unique<VariableDeclStmt>(
         identifierType, identifierName.lexeme, std::move(init),
@@ -354,6 +381,13 @@ StmtPtr Parser::parseFor() {
 ExprPtr Parser::parseExpression() { return parseAssignment(); }
 
 Program Parser::parse() {
+    var_type_lookup["input_f"] = "float";
+    var_type_lookup["sqrt_f"] = "float";
+    var_type_lookup["sin_f"] = "float";
+    var_type_lookup["cos_f"] = "float";
+    var_type_lookup["tan_f"] = "float";
+    var_type_lookup["abs_f"] = "float";
+
     Program prog;
 
     while (!isAtEnd()) {
@@ -361,6 +395,7 @@ Program Parser::parse() {
     }
 
     prog.var_offset_lookup = var_offset_lookup;
+    prog.var_type_lookup = var_type_lookup;
     prog.stack_size = stack_size_bytes;
 
     return prog;

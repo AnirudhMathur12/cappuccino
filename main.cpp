@@ -75,19 +75,14 @@ int main(int argc, char *argv[]) {
     generator.generate();
     asmFile.close();
 
-    std::string cmd = "clang -o " + output_name + " output.s stdlib.c";
-
-    std::ifstream libCheck("stdlib.c");
-    if (!libCheck.good()) {
-        std::cerr << "Warning: stdlib.c not found in current directory. "
-                  << "Linking might fail if you use print()." << std::endl;
-    }
+    std::string cmd = "clang -o " + output_name + " output.s";
 
     std::cout << "Compiling binary..." << std::endl;
     int ret = std::system(cmd.c_str());
 
     if (ret == 0) {
         std::cout << "Build successful: ./" << output_name << std::endl;
+        std::remove("output.s");
     } else {
         std::cerr << "Build failed. Check clang errors above." << std::endl;
         return 1;

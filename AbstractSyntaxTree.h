@@ -129,8 +129,10 @@ struct ReturnStmt : Stmt {
 struct FunctionParameterStmt : Stmt {
     Token type_token;
     std::string name;
+    int offset;
 
-    FunctionParameterStmt(const Token &p_type_token, const std::string &n);
+    FunctionParameterStmt(const Token &p_type_token, const std::string &n,
+                          int off);
     void dump(int indent = 0) const override;
 };
 
@@ -139,8 +141,10 @@ struct FunctionDeclStmt : Stmt {
     Token name_token;
     std::vector<StmtPtr> params;
     StmtPtr body;
-    FunctionDeclStmt(Token rt, Token name, std::vector<StmtPtr> p, StmtPtr b);
+    int stack_size;
 
+    FunctionDeclStmt(Token rt, Token name, std::vector<StmtPtr> p, StmtPtr b,
+                     int stack);
     void dump(int indent = 0) const override;
 };
 
@@ -157,6 +161,7 @@ struct Program {
 
     void dump() const;
     std::unordered_map<std::string, int> var_offset_lookup;
+    std::unordered_map<std::string, std::string> var_type_lookup;
     int stack_size = 0;
 };
 
