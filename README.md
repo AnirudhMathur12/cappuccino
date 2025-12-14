@@ -33,7 +33,7 @@ You'll get a binary called `cappuccino`.
 ```
 
 ## Writing code in Cappuccino
-Cappuccino's syntax is simple and familiar if you know C or C-like langauges. Every statement needs to be terminated with a semicolo, like a real langauge. 
+Cappuccino's syntax is simple and familiar if you know C or C-like langauges. Every statement needs to be terminated with a semicolon, like a real langauge. 
 ### Variables
 ```capp
 int x = 10;
