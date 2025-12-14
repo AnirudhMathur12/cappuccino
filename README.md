@@ -3,7 +3,7 @@ A small hobby programming language compiler written in C++. Built to learn the i
 
 ## Overview
 This project is the compiler for a small language called Cappuccino. It goes from source code ->
-tokens -> AST -> actualy ARM64 assembly. 
+tokens -> AST -> actually ARM64 assembly. 
 No LLVM, no IR, no giant dependencies. LLVM is great, but using it for, arguably, the hardest part of this project felt like cheating.
 
 
