@@ -62,7 +62,7 @@ Cappuccino supports standard arithmetic and relational operators.
 |`*`|Multiplication|
 |`/`|Division|
 
-### Arithmetic
+### Logical
 These operators return `1`(true) or `0`(false).
 |Operator|Description|
 |:-------|:----------|
