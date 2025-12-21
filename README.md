@@ -1,3 +1,8 @@
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+![Language](https://img.shields.io/badge/language-C%2B%2B20-blue)
+![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20ARM64-lightgrey)
+![Build System](https://img.shields.io/badge/build-CMake-green)
+
 # Cappuccino
 A small hobby programming language compiler written in C++. Built to learn the ins and outs of a compiler because they're straight up magic.
 
