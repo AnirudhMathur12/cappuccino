@@ -1,7 +1,7 @@
 #include "CodeGen.h"
 #include "AbstractSyntaxTree.h"
 #include "Token.h"
-#include "stdlib.h"
+#include "capp_stdlib.h"
 #include <cstdint>
 #include <stdexcept>
 #include <string>

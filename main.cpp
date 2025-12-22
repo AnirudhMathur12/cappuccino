@@ -5,6 +5,7 @@
 #include "Parser.h"
 #include "Token.h"
 #include "utils.h"
+#include "version.h"
 
 bool show_tokens = false, show_ast = false;
 std::string output_name = "a.out";
@@ -25,6 +26,12 @@ int main(int argc, char *argv[]) {
             show_tokens = true;
         } else if (arg == "--ast") {
             show_ast = true;
+        } else if (arg == "--version" || arg == "-v") {
+            std::cout << "Cappuccino Compiler v" << VERSION_STRING << std::endl;
+            std::cout << PROJECT_DESCRIPTION << std::endl;
+            std::cout << "Author:   " << PROJECT_AUTHOR << std::endl;
+            std::cout << "Homepage: " << PROJECT_HOMEPAGE << std::endl;
+            return 0;
         } else if (arg == "-o") {
             if (i + 1 < argc) {
                 output_name = argv[++i];
@@ -83,17 +90,27 @@ int main(int argc, char *argv[]) {
     generator.generate();
     asmFile.close();
 
-    std::string cmd = "clang -o " + output_name + " output.s";
-
-    std::cout << "Compiling binary..." << std::endl;
-    int ret = std::system(cmd.c_str());
-
-    if (ret == 0) {
-        std::cout << "Build successful: ./" << output_name << std::endl;
-        std::remove("output.s");
-    } else {
-        std::cerr << "Build failed. Check clang errors above." << std::endl;
+    std::cout << "Assembling..." << std::endl;
+    std::string as_cmd = "as -o output.o output.s";
+    int as_ret = std::system(as_cmd.c_str());
+    if (as_ret != 0) {
+        std::cerr << "Assembly failed. Check assembler errors above."
+                  << std::endl;
         return 1;
+    }
+
+    std::cout << "Linking..." << std::endl;
+    std::string ld_cmd = "ld -o " + output_name +
+                         " output.o -lSystem -syslibroot `xcrun -sdk macosx "
+                         "--show-sdk-path` -e  _main -arch arm64";
+    int ld_ret = std::system(ld_cmd.c_str());
+    if (ld_ret != 0) {
+        std::cerr << "Linker failed. Check linker errors above." << std::endl;
+        return 1;
+    } else {
+        std::cout << "Compilation successful." << std::endl;
+        std::remove("output.s");
+        std::remove("output.o");
     }
 
     return 0;
