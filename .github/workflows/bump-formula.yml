@@ -1,0 +1,27 @@
+name: Update Homebrew Formula
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  homebrew:
+    name: Bump Homebrew Formula
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract version
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - uses: mislav/bump-homebrew-formula-action@v3
+        with:
+          # The name of your formula file (cappuccino.rb)
+          formula-name: cappuccino
+          # Your user/repo where the formula lives
+          homebrew-tap: AnirudhMathur12/homebrew-cappuccino
+          # The branch to update in the tap repo
+          base-branch: main
+          # Optional: Force the URL pattern if needed (usually auto-detected)
+          download-url: https://github.com/AnirudhMathur12/cappuccino/archive/refs/tags/${{ steps.get_version.outputs.VERSION }}.tar.gz
+        env:
+          COMMITTER_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
