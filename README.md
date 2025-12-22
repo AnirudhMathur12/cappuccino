@@ -1,9 +1,14 @@
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+![Language](https://img.shields.io/badge/language-C%2B%2B20-blue)
+![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20ARM64-lightgrey)
+![Build System](https://img.shields.io/badge/build-CMake-green)
+
 # Cappuccino
-A small hobby programming language compiler written in C++. Built to learn the ins and outs of a compiler becuase they're straight up magic.
+A small hobby programming language compiler written in C++. Built to learn the ins and outs of a compiler because they're straight up magic.
 
 ## Overview
 This project is the compiler for a small language called Cappuccino. It goes from source code ->
-tokens -> AST -> actualy ARM64 assembly. 
+tokens -> AST -> actually ARM64 assembly. 
 No LLVM, no IR, no giant dependencies. LLVM is great, but using it for, arguably, the hardest part of this project felt like cheating.
 
 
@@ -31,14 +36,24 @@ You'll get a binary called `cappuccino`.
 ```bash
 ./cappuccino <file.capp> [-o <output-binary>] [--tokens] [--ast]
 ```
+## Syntax
+The syntax on how to write code in Cappuccino is outlined [here](syntax.md).
 
-I have attached some examples of cappuccino in the [examples](examples/) directory. 
+I have attached some examples of cappuccino code in the [examples directory](examples/). 
 
 ## How it works
 - The lexer turns characters into tokens
 - The parser turns these tokens in an AST using a basic recursive-descent parser.
 - CodeGen travels through the AST and spits out ARM64 assembly.
 - The clang assembler + linked take over and give an executable.
+
+## Benchmarks
+ One of the few benchmarks I can perform in this language is calculating prime numbers upto 10 million
+
+<img width="1914" height="956" alt="chart-4" src="https://github.com/user-attachments/assets/311775d0-e7f2-4133-98ac-f55508bbad44" />
+
+
+From the perspective of a compiled language, it's not that performant. The stack machine overhead is pretty apparent, but hey, it's at least faster than Python, not that that's a big achievement.
 
 ## FAQs
 ### Why is called Cappuccino?
