@@ -24,7 +24,7 @@ else()
 endif()
 
 project(cappuccino 
-    VERSION 1.1.0
+    VERSION ${PROJECT_VERSION_OVERRIDE}
     LANGUAGES CXX
 )
 
