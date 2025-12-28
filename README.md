@@ -20,7 +20,8 @@ No LLVM, no IR, no giant dependencies. LLVM is great, but using it for, arguably
 Requirements:
 - C++20 or newer
 - CMake
-- Clang (yes it's not dependant on LLVM IR but it still uses the assembler)
+- XCode Command Line Tools (specifically `as` and `ld`)
+
 
 ``` bash
 git clone https://github.com/AnirudhMathur12/cappuccino
@@ -45,7 +46,8 @@ I have attached some examples of cappuccino code in the [examples directory](exa
 - The lexer turns characters into tokens
 - The parser turns these tokens in an AST using a basic recursive-descent parser.
 - CodeGen travels through the AST and spits out ARM64 assembly.
-- The clang assembler + linked take over and give an executable.
+- The compiler invokes the system assembler (`as`) to generate an object file.
+- Finally, the system linker (`ld`) is called to link against the macOS system libraries and produce the final executable.
 
 ## Benchmarks
  One of the few benchmarks I can perform in this language is calculating prime numbers upto 10 million
