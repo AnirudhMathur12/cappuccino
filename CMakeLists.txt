@@ -73,34 +73,40 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(SOURCES
-    main.cpp
-    utils.cpp
-    Token.cpp
-    AbstractSyntaxTree.cpp
-    CodeGen.cpp
-    Parser.cpp
+    src/main.cpp
+    src/utils.cpp
+    src/Token.cpp
+    src/AbstractSyntaxTree.cpp
+    src/CodeGen.cpp
+    src/Parser.cpp
 )
 
 set(HEADERS
-        utils.h
-        Token.h
-        AbstractSyntaxTree.h
-        Parser.h
-        CodeGen.h
-        capp_stdlib.h
+        include/utils.h
+        include/Token.h
+        include/AbstractSyntaxTree.h
+        include/Parser.h
+        include/CodeGen.h
+        include/capp_stdlib.h
 )
 
 configure_file(
-    "${PROJECT_SOURCE_DIR}/version.h.in"
-    "${PROJECT_BINARY_DIR}/version.h"
+    "${PROJECT_SOURCE_DIR}/include/version.h.in"
+    "${PROJECT_BINARY_DIR}/include/version.h"
     @ONLY
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 
+target_compile_options(cappuccino PRIVATE 
+    $<$<CONFIG:Debug>:-g;-O0;-Wall;-Wextra>
+    $<$<CONFIG:Release>:-O2;-DNDEBUG>
+)
+
 target_include_directories(${PROJECT_NAME}
     PRIVATE
         ${PROJECT_SOURCE_DIR}
+        ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_BINARY_DIR}
 )
 
