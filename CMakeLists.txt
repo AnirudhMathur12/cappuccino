@@ -79,6 +79,8 @@ set(SOURCES
     src/AbstractSyntaxTree.cpp
     src/CodeGen.cpp
     src/Parser.cpp
+    src/Type.cpp
+    src/SymbolTable.cpp
 )
 
 set(HEADERS
@@ -88,6 +90,8 @@ set(HEADERS
         include/Parser.h
         include/CodeGen.h
         include/capp_stdlib.h
+        include/Type.h
+        include/SymbolTable.h
 )
 
 configure_file(

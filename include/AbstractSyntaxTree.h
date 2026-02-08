@@ -6,6 +6,7 @@
 #define CAPPUCCINO_ABSTRACTSYNTAXTREE_H
 
 #include "Token.h"
+#include "Type.h"
 #include <memory>
 
 struct Expr {
@@ -24,7 +25,7 @@ using StmtPtr = std::unique_ptr<Stmt>;
 
 struct LiteralExpr : Expr {
     Token token;
-    std::variant<int64_t, float, std::string> value;
+    FormattedData value;
 
     LiteralExpr(const Token &t);
     void dump(int indent = 0) const override;
@@ -34,9 +35,9 @@ struct IdentifierExpr : Expr {
     Token token;
     std::string name;
     int offset;
-    std::string type;
+    Type type;
 
-    IdentifierExpr(Token t, int off, std::string type);
+    IdentifierExpr(Token t, int off, Type type);
     void dump(int indent = 0) const override;
 };
 
@@ -77,9 +78,9 @@ struct VariableDeclStmt : Stmt {
     std::string name;
     std::optional<ExprPtr> initializer;
     int offset;
+    Type type;
 
-    VariableDeclStmt(const Token &t, std::string n, std::optional<ExprPtr> i,
-                     int off);
+    VariableDeclStmt(const Token &t, std::string n, std::optional<ExprPtr> i, int off);
     void dump(int indent = 0) const override;
 };
 
@@ -114,8 +115,7 @@ struct ForStmt : Stmt {
 
     StmtPtr body;
 
-    ForStmt(std::optional<StmtPtr> i, std::optional<ExprPtr> c,
-            std::optional<ExprPtr> inc, StmtPtr b);
+    ForStmt(std::optional<StmtPtr> i, std::optional<ExprPtr> c, std::optional<ExprPtr> inc, StmtPtr b);
     void dump(int indent = 0) const override;
 };
 
@@ -132,28 +132,28 @@ struct FunctionParameterStmt : Stmt {
     std::string name;
     int offset;
 
-    FunctionParameterStmt(const Token &p_type_token, const std::string &n,
-                          int off);
+    FunctionParameterStmt(const Token &p_type_token, const std::string &n, int off);
     void dump(int indent = 0) const override;
 };
 
 struct FunctionDeclStmt : Stmt {
-    Token return_type;
+    Type return_type;
     Token name_token;
     std::vector<StmtPtr> params;
     StmtPtr body;
     int stack_size;
 
-    FunctionDeclStmt(Token rt, Token name, std::vector<StmtPtr> p, StmtPtr b,
-                     int stack);
+    FunctionDeclStmt(Type rt, Token name, std::vector<StmtPtr> p, StmtPtr b, int stack);
     void dump(int indent = 0) const override;
 };
 
 struct FunctionCallExpr : Expr {
     Token name_token;
     std::vector<ExprPtr> args;
+    Type return_type;
+    std::vector<Type> param_types;
 
-    FunctionCallExpr(const Token &n, std::vector<ExprPtr> p_args);
+    FunctionCallExpr(const Token &n, std::vector<ExprPtr> p_args, Type return_type, std::vector<Type> param_types);
     void dump(int indent = 0) const override;
 };
 

@@ -2,6 +2,7 @@
 #define CAPPUCCINO_PARSER_H
 
 #include "AbstractSyntaxTree.h"
+#include "SymbolTable.h"
 #include "Token.h"
 #include <stdexcept>
 
@@ -20,9 +21,7 @@ class Parser {
 
     Program parse();
 
-    int stack_size_bytes = 0;
-    std::unordered_map<std::string, int> var_offset_lookup;
-    std::unordered_map<std::string, std::string> var_type_lookup;
+    SymbolTable symbolTable;
 
   private:
     const std::vector<Token> &tokens;

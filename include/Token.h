@@ -4,25 +4,49 @@
 
 #ifndef CAPPUCCINO_TOKEN_H
 #define CAPPUCCINO_TOKEN_H
+#include <cstdint>
 #include <iostream>
 #include <string>
 #include <vector>
 
-enum TokenType {
+using FormattedData = std::variant<std::monostate, uint64_t, double, std::string>;
+
+enum class TokenType {
+    // Literals
     LITERAL_STRING,
     LITERAL_FLOAT,
     LITERAL_INTEGER,
     IDENTIFIER,
+
+    // Punctuation
     SEMICOLON,
+    COMMA,
+    LEFT_PAREN,
+    RIGHT_PAREN,
+    LEFT_CURLY,
+    RIGHT_CURLY,
+
+    // Control Flow
     KEYWORD_IF,
     KEYWORD_ELSE,
     KEYWORD_FOR,
     KEYWORD_RETURN,
     KEYWORD_WHILE,
-    KEYWORD_TYPE_INT,
-    KEYWORD_TYPE_FLOAT,
-    KEYWORD_TYPE_STRING,
+
+    // Data Types
+    KEYWORD_TYPE_INT64,
+    KEYWORD_TYPE_INT32,
+    KEYWORD_TYPE_INT16,
+    KEYWORD_TYPE_INT8,
+    KEYWORD_TYPE_UINT64,
+    KEYWORD_TYPE_UINT32,
+    KEYWORD_TYPE_UINT16,
+    KEYWORD_TYPE_UINT8,
+    KEYWORD_TYPE_FLOAT64,
+    KEYWORD_TYPE_FLOAT32,
     KEYWORD_TYPE_VOID,
+
+    // Operators
     OPERATOR_EQUALITY,
     OPERATOR_MINUS,
     OPERATOR_PLUS,
@@ -34,20 +58,18 @@ enum TokenType {
     OPERATOR_GREATER_EQUALS,
     OPERATOR_FORWARD_SLASH,
     OPERATOR_BACKSLASH,
-    LEFT_PAREN,
-    RIGHT_PAREN,
-    LEFT_CURLY,
-    RIGHT_CURLY,
+
+    // Logical
     EXCL_EQUAL,
     EXCLAMATION,
+
+    // Meta
     TOKEN_EOF,
-    COMMA,
     UNDEFINED
 };
 
 inline std::string token_type_to_string(TokenType type);
-inline std::string fd_to_string(
-    const std::variant<std::monostate, int64_t, float, std::string> &fd);
+inline std::string fd_to_string(const FormattedData &fd);
 
 class Token {
   public:
@@ -58,7 +80,7 @@ class Token {
 
     std::string lexeme;
     int row, column;
-    std::variant<std::monostate, int64_t, float, std::string> fd;
+    FormattedData fd;
     TokenType type;
 };
 
