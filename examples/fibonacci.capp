@@ -1,4 +1,4 @@
-int fib(int n) {
+uint64 fib(uint64 n) {
     if (n < 2) {
         return n;
     }
@@ -6,9 +6,9 @@ int fib(int n) {
     return fib(n-1) + fib(n-2);
 }
 
-int main() {
+uint8 main() {
     print_s("Enter a number");
-    int n = input_i();
+    uint64 n = input_i();
 
     print(fib(n));
 

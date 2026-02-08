@@ -2,6 +2,7 @@
 #define CAPPUCCINO_CODEGEN_H_
 
 #include "AbstractSyntaxTree.h"
+#include "Type.h"
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -19,7 +20,7 @@ class CodeGen {
     int label_counter = 0;
     std::vector<std::pair<std::string, std::string>> string_literals;
 
-    std::string current_type = "int";
+    Type current_type = TypeSystem::Int32;
     std::string nextLabel(const std::string &prefix);
     int current_func_stack_size = 0;
 

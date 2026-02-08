@@ -8,13 +8,12 @@
 #include "version.h"
 
 bool show_tokens = false, show_ast = false;
+bool stop_at_tokens = false, stop_at_ast = false;
 std::string output_name = "a.out";
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0]
-                  << " <file.capp> [-o <output_binary>] [--tokens] [--ast]"
-                  << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <file.capp> [-o <output_binary>] [--tokens] [--ast]" << std::endl;
         return 1;
     }
 
@@ -24,8 +23,12 @@ int main(int argc, char *argv[]) {
         std::string arg = argv[i];
         if (arg == "--tokens") {
             show_tokens = true;
+        } else if (arg == "--till_tokens") {
+            stop_at_tokens = true;
         } else if (arg == "--ast") {
             show_ast = true;
+        } else if (arg == "--till_ast") {
+            stop_at_ast = true;
         } else if (arg == "--version" || arg == "-v") {
             std::cout << "Cappuccino Compiler v" << VERSION_STRING << std::endl;
             std::cout << PROJECT_DESCRIPTION << std::endl;
@@ -36,8 +39,7 @@ int main(int argc, char *argv[]) {
             if (i + 1 < argc) {
                 output_name = argv[++i];
             } else {
-                std::cerr << "Error: -o requires a filename argument."
-                          << std::endl;
+                std::cerr << "Error: -o requires a filename argument." << std::endl;
                 return 1;
             }
         } else {
@@ -52,10 +54,8 @@ int main(int argc, char *argv[]) {
 
     std::string source_path = source_files[0];
 
-    if (source_path.length() < 5 ||
-        source_path.substr(source_path.length() - 5) != ".capp") {
-        std::cerr << "Error: Input file must have a .capp extension."
-                  << std::endl;
+    if (source_path.length() < 5 || source_path.substr(source_path.length() - 5) != ".capp") {
+        std::cerr << "Error: Input file must have a .capp extension." << std::endl;
         return 1;
     }
 
@@ -74,11 +74,13 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    if (stop_at_tokens) return 0;
+
     Parser p(tokens);
     Program prog = p.parse();
 
-    if (show_ast)
-        prog.dump();
+    if (show_ast) prog.dump();
+    if (stop_at_ast) return 0;
 
     std::ofstream asmFile("output.s");
     if (!asmFile.is_open()) {
@@ -94,8 +96,7 @@ int main(int argc, char *argv[]) {
     std::string as_cmd = "as -o output.o output.s";
     int as_ret = std::system(as_cmd.c_str());
     if (as_ret != 0) {
-        std::cerr << "Assembly failed. Check assembler errors above."
-                  << std::endl;
+        std::cerr << "Assembly failed. Check assembler errors above." << std::endl;
         return 1;
     }
 
@@ -109,7 +110,7 @@ int main(int argc, char *argv[]) {
         return 1;
     } else {
         std::cout << "Compilation successful." << std::endl;
-        std::remove("output.s");
+        // std::remove("output.s");
         std::remove("output.o");
     }
 

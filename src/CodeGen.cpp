@@ -1,30 +1,26 @@
 #include "CodeGen.h"
 #include "AbstractSyntaxTree.h"
 #include "Token.h"
+#include "Type.h"
 #include "capp_stdlib.h"
 #include <cstdint>
+#include <iomanip>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <variant>
 
-CodeGen::CodeGen(const Program &prog, std::ostream &output)
-    : prog(prog), out(output) {}
+CodeGen::CodeGen(const Program &prog, std::ostream &output) : prog(prog), out(output), current_type(TypeSystem::Int32) {}
 
-std::string CodeGen::nextLabel(const std::string &prefix) {
-    return prefix + "_" + std::to_string(label_counter++);
-}
+std::string CodeGen::nextLabel(const std::string &prefix) { return prefix + "_" + std::to_string(label_counter++); }
 
 void CodeGen::emit(const std::string &instr) { out << "\t" << instr << "\n"; }
 
 void CodeGen::emitLabel(const std::string &label) { out << label << ":\n"; }
 
-void CodeGen::pushRaw(const std::string &reg) {
-    emit("str " + reg + ", [sp, #-16]!");
-}
+void CodeGen::pushRaw(const std::string &reg) { emit("str " + reg + ", [sp, #-16]!"); }
 
-void CodeGen::popRaw(const std::string &reg) {
-    emit("ldr " + reg + ", [sp], #16");
-}
+void CodeGen::popRaw(const std::string &reg) { emit("ldr " + reg + ", [sp], #16"); }
 
 void CodeGen::generate() {
     out << ".globl _main\n";
@@ -78,7 +74,7 @@ void CodeGen::genExpr(const Expr *expr) {
     else if (auto *e = dynamic_cast<const FunctionCallExpr *>(expr))
         visitFunctionCall(e);
     else if (auto *e = dynamic_cast<const BinaryExpr *>(expr)) {
-        if (e->op.type == OPERATOR_ASSIGNMENT)
+        if (e->op.type == TokenType::OPERATOR_ASSIGNMENT)
             visitAssignment(e);
         else
             visitBinary(e);
@@ -99,9 +95,8 @@ void CodeGen::visitFunctionDecl(const FunctionDeclStmt *stmt) {
     emit("stp x29, x30, [sp, #-16]!");
     emit("mov x29, sp");
 
-    int stackSize = stmt->stack_size; // Use function's own stack size!
-    if (stackSize % 16 != 0)
-        stackSize += (16 - (stackSize % 16));
+    int stackSize = stmt->stack_size; // Use function's own stack size
+    if (stackSize % 16 != 0) stackSize += (16 - (stackSize % 16));
 
     if (stackSize > 0) {
         emit("sub sp, sp, #" + std::to_string(stackSize));
@@ -110,28 +105,32 @@ void CodeGen::visitFunctionDecl(const FunctionDeclStmt *stmt) {
     // Store parameters from registers
     int i = 0;
     for (const auto &param : stmt->params) {
-        if (auto *p =
-                dynamic_cast<const FunctionParameterStmt *>(param.get())) {
+        if (auto *p = dynamic_cast<const FunctionParameterStmt *>(param.get())) {
             int offset = p->offset; // Use offset from AST
 
-            std::cout << "  Param '" << p->name << "' using offset: " << offset
-                      << std::endl;
+            std::cout << "  Param '" << p->name << "' using offset: " << offset << std::endl;
 
-            std::string paramType = p->type_token.lexeme;
+            Type param_type = TypeSystem::from_string(p->type_token.lexeme);
 
-            if (paramType == "float") {
-                std::string reg = "d" + std::to_string(i);
-                emit("stur " + reg + ", [x29, #-" + std::to_string(offset) +
-                     "]");
+            if (param_type.is_float) {
+                std::string reg = (param_type.size_bytes == 4 ? "s" : "d") + std::to_string(i);
+                emit("stur " + reg + ", [x29, #-" + std::to_string(offset) + "]");
             } else {
-                std::string reg = "x" + std::to_string(i);
-                emit("stur " + reg + ", [x29, #-" + std::to_string(offset) +
-                     "]");
+                std::string reg = (param_type.size_bytes < 8 ? "w" : "x") + std::to_string(i);
+
+                if (param_type.size_bytes == 1) {
+                    emit("sturb " + reg + ", [x29, #-" + std::to_string(offset) + "]");
+                } else if (param_type.size_bytes == 2) {
+                    emit("sturh " + reg + ", [x29, #-" + std::to_string(offset) + "]");
+                } else if (param_type.size_bytes == 4) {
+                    emit("stur " + reg + ", [x29, #-" + std::to_string(offset) + "]");
+                } else {
+                    emit("stur " + reg + ", [x29, #-" + std::to_string(offset) + "]");
+                }
             }
         }
         i++;
-        if (i > 7)
-            break;
+        if (i > 7) break;
     }
 
     // Generate function body
@@ -156,8 +155,7 @@ void CodeGen::visitReturn(const ReturnStmt *stmt) {
     }
 
     int stackSize = current_func_stack_size;
-    if (stackSize % 16 != 0)
-        stackSize += (16 - (stackSize % 16));
+    if (stackSize % 16 != 0) stackSize += (16 - (stackSize % 16));
 
     if (stackSize > 0) {
         emit("add sp, sp, #" + std::to_string(stackSize));
@@ -167,22 +165,27 @@ void CodeGen::visitReturn(const ReturnStmt *stmt) {
 }
 
 void CodeGen::visitLiteral(const LiteralExpr *expr) {
-    if (std::holds_alternative<int64_t>(expr->token.fd)) {
-        int64_t val = std::get<int64_t>(expr->token.fd);
+    if (std::holds_alternative<uint64_t>(expr->token.fd)) {
+        uint64_t val = std::get<uint64_t>(expr->token.fd);
         emit("ldr x0, =" + std::to_string(val));
-        current_type = "int";
-    } else if (std::holds_alternative<float>(expr->token.fd)) {
-        float val = std::get<float>(expr->token.fd);
+        current_type = TypeSystem::Int64;
+    } else if (std::holds_alternative<double>(expr->token.fd)) {
+        double val = std::get<double>(expr->token.fd);
         std::string label = nextLabel("L_float");
 
         emit(".section __TEXT,__literal8,8byte_literals");
         emitLabel(label);
-        emit(".double " + std::to_string(val));
+
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(15) << val;
+        emit(".double " + oss.str());
+
         emit(".section __TEXT,__text,regular,pure_instructions");
 
         emit("adrp x0, " + label + "@PAGE");
         emit("ldr d0, [x0, " + label + "@PAGEOFF]");
-        current_type = "float";
+
+        current_type = TypeSystem::Float64;
     } else if (std::holds_alternative<std::string>(expr->token.fd)) {
         std::string val = std::get<std::string>(expr->token.fd);
         std::string label = nextLabel("L_str");
@@ -191,44 +194,78 @@ void CodeGen::visitLiteral(const LiteralExpr *expr) {
 
         emit("adrp x0, " + label + "@PAGE");
         emit("add x0, x0, " + label + "@PAGEOFF");
-        current_type = "string";
+        current_type = TypeSystem::StringLiteral;
     }
 }
 
 void CodeGen::visitIdentifier(const IdentifierExpr *expr) {
-    std::string type = expr->type;
+    current_type = expr->type;
 
-    if (type == "float") {
-        emit("ldur d0, [x29, #-" + std::to_string(expr->offset) + "]");
-        current_type = "float";
+    if (current_type.is_float) {
+        if (current_type.size_bytes == 4) {
+            emit("ldur s0, [x29, #-" + std::to_string(expr->offset) + "]");
+        } else {
+            emit("ldur d0, [x29, #-" + std::to_string(expr->offset) + "]");
+        }
     } else {
-        emit("ldur x0, [x29, #-" + std::to_string(expr->offset) + "]");
-        current_type = "int";
+        if (current_type.size_bytes == 1) {
+            if (current_type.is_signed) {
+                emit("ldursb x0, [x29, #-" + std::to_string(expr->offset) + "]");
+            } else {
+                emit("ldurb w0, [x29, #-" + std::to_string(expr->offset) + "]");
+            }
+        } else if (current_type.size_bytes == 2) {
+            if (current_type.is_signed) {
+                emit("ldursh x0, [x29, #-" + std::to_string(expr->offset) + "]");
+            } else {
+                emit("ldurh w0, [x29, #-" + std::to_string(expr->offset) + "]");
+            }
+        } else if (current_type.size_bytes == 4) {
+            emit("ldur w0, [x29, #-" + std::to_string(expr->offset) + "]");
+        } else {
+            emit("ldur x0, [x29, #-" + std::to_string(expr->offset) + "]");
+        }
     }
 }
 
 void CodeGen::visitAssignment(const BinaryExpr *expr) {
     auto *ident = dynamic_cast<const IdentifierExpr *>(expr->left.get());
-    if (!ident)
-        throw std::runtime_error("LHS of assignment must be a variable.");
+    if (!ident) throw std::runtime_error("LHS of assignment must be a variable.");
 
     genExpr(expr->right.get());
 
-    std::string varType = ident->type;
-    if (prog.var_type_lookup.count(ident->name)) {
-        varType = prog.var_type_lookup.at(ident->name);
-    }
+    Type varType = ident->type;
 
-    if (varType == "float") {
-        if (current_type == "int") {
+    if (varType.is_float) {
+        if (!current_type.is_float) {
             emit("scvtf d0, x0");
+            current_type = TypeSystem::Float64;
         }
-        emit("stur d0, [x29, #-" + std::to_string(ident->offset) + "]");
+
+        if (varType.size_bytes == 4 && current_type.size_bytes == 8)
+            emit("fcvt s0, d0");
+        else if (varType.size_bytes == 8 && current_type.size_bytes == 4)
+            emit("fcvt d0, s0");
+
+        if (varType.size_bytes == 4) {
+            emit("stur s0, [x29, #-" + std::to_string(ident->offset) + "]");
+        } else {
+            emit("stur d0, [x29, #-" + std::to_string(ident->offset) + "]");
+        }
+
     } else {
-        if (current_type == "float") {
+        if (current_type.is_float) {
             emit("fcvtzs x0, d0");
         }
-        emit("stur x0, [x29, #-" + std::to_string(ident->offset) + "]");
+        if (varType.size_bytes == 1) {
+            emit("sturb w0, [x29, #-" + std::to_string(ident->offset) + "]");
+        } else if (varType.size_bytes == 2) {
+            emit("sturh w0, [x29, #-" + std::to_string(ident->offset) + "]");
+        } else if (varType.size_bytes == 4) {
+            emit("stur w0, [x29, #-" + std::to_string(ident->offset) + "]");
+        } else {
+            emit("stur d0, [x29, #-" + std::to_string(ident->offset) + "]");
+        }
     }
 }
 
@@ -242,22 +279,52 @@ void CodeGen::visitVarDecl(const VariableDeclStmt *stmt) {
     if (stmt->initializer) {
         genExpr(stmt->initializer.value().get());
 
-        std::string varType = stmt->type_token.lexeme;
+        Type varType = TypeSystem::from_string(stmt->type_token.lexeme);
 
-        if (varType == "float" && current_type == "int") {
-            emit("scvtf d0, x0");
-            emit("stur d0, [x29, #-" + std::to_string(stmt->offset) + "]");
-        } else if (varType == "float") {
-            emit("stur d0, [x29, #-" + std::to_string(stmt->offset) + "]");
+        if (varType.is_float) {
+            // Int -> Float
+            if (!current_type.is_float) {
+                emit("scvtf d0, x0");
+                current_type = (current_type.size_bytes == 4) ? TypeSystem::Float32 : TypeSystem::Float64;
+            }
+
+            // Float64 -> Float32 (Downcast)
+            if (varType.size_bytes == 4 && current_type.size_bytes == 8) {
+                emit("fcvt s0, d0");
+            }
+            // Float32 -> Float64 (Upcast)
+            else if (varType.size_bytes == 8 && current_type.size_bytes == 4) {
+                emit("fcvt d0, s0");
+            }
+        }
+        // 2. Handle Int conversions (Simple cast)
+        else {
+            if (current_type.is_float) {
+                emit("fcvtzs x0, d0"); // Float -> Int
+            }
+        }
+
+        if (varType.is_float) {
+            if (varType.size_bytes == 4) {
+                emit("stur s0, [x29, #-" + std::to_string(stmt->offset) + "]");
+            } else {
+                emit("stur d0, [x29, #-" + std::to_string(stmt->offset) + "]");
+            }
         } else {
-            emit("stur x0, [x29, #-" + std::to_string(stmt->offset) + "]");
+            if (varType.size_bytes == 1) {
+                emit("sturb w0, [x29, #-" + std::to_string(stmt->offset) + "]");
+            } else if (varType.size_bytes == 2) {
+                emit("sturh w0, [x29, #-" + std::to_string(stmt->offset) + "]");
+            } else if (varType.size_bytes == 4) {
+                emit("stur w0, [x29, #-" + std::to_string(stmt->offset) + "]");
+            } else {
+                emit("stur x0, [x29, #-" + std::to_string(stmt->offset) + "]");
+            }
         }
     }
 }
 
-void CodeGen::visitExpressionStmt(const ExprStmt *stmt) {
-    genExpr(stmt->expr.get());
-}
+void CodeGen::visitExpressionStmt(const ExprStmt *stmt) { genExpr(stmt->expr.get()); }
 
 void CodeGen::visitIf(const IfStmt *stmt) {
     std::string labelElse = nextLabel("L_else");
@@ -323,168 +390,327 @@ void CodeGen::visitWhile(const WhileStmt *stmt) {
 
 void CodeGen::visitBinary(const BinaryExpr *expr) {
     genExpr(expr->left.get());
-    std::string leftType = current_type;
+    Type leftType = current_type;
 
-    if (leftType == "float")
+    if (leftType.is_float)
         emit("str d0, [sp, #-16]!");
     else
         emit("str x0, [sp, #-16]!");
 
     genExpr(expr->right.get());
-    std::string rightType = current_type;
+    Type rightType = current_type;
 
-    if (rightType == "float")
+    if (rightType.is_float)
         emit("fmov d1, d0");
     else
         emit("mov x1, x0");
 
-    if (leftType == "float")
+    if (leftType.is_float)
         emit("ldr d0, [sp], #16");
     else
         emit("ldr x0, [sp], #16");
 
-    if (leftType == "int" && rightType == "float") {
+    if (!leftType.is_float && rightType.is_float) {
         emit("scvtf d0, x0");
-        leftType = "float";
-    } else if (leftType == "float" && rightType == "int") {
+        leftType = TypeSystem::Float64;
+    } else if (leftType.is_float && !rightType.is_float) {
         emit("scvtf d1, x1");
-        rightType = "float";
+        rightType = TypeSystem::Float64;
     }
 
-    if (leftType == "float") {
-        current_type = "float";
-        switch (expr->op.type) {
-        case OPERATOR_PLUS:
-            emit("fadd d0, d0, d1");
-            break;
-        case OPERATOR_MINUS:
-            emit("fsub d0, d0, d1");
-            break;
-        case OPERATOR_ASTERISK:
-            emit("fmul d0, d0, d1");
-            break;
-        case OPERATOR_FORWARD_SLASH:
-            emit("fdiv d0, d0, d1");
-            break;
+    if (leftType.is_float && rightType.is_float) {
+        if (rightType.size_bytes == 4 && leftType.size_bytes == 4) {
+            current_type = TypeSystem::Float32;
+            switch (expr->op.type) {
+            case TokenType::OPERATOR_PLUS: emit("fadd s0, s0, s1"); break;
+            case TokenType::OPERATOR_MINUS: emit("fsub s0, s0, s1"); break;
+            case TokenType::OPERATOR_ASTERISK: emit("fmul s0, s0, s1"); break;
+            case TokenType::OPERATOR_FORWARD_SLASH: emit("fdiv s0, s0, s1"); break;
 
-        case OPERATOR_LESS:
-            emit("fcmp d0, d1");
-            emit("cset x0, mi"); // mi = Minus (Less Than)
-            current_type = "int";
-            break;
-        case OPERATOR_LESS_EQUALS:
-            emit("fcmp d0, d1");
-            emit("cset x0, le"); // le = Less or Equal
-            current_type = "int";
-            break;
-        case OPERATOR_GREATER:
-            emit("fcmp d0, d1");
-            emit("cset x0, gt"); // gt = Greater Than
-            current_type = "int";
-            break;
-        case OPERATOR_GREATER_EQUALS:
-            emit("fcmp d0, d1");
-            emit("cset x0, ge"); // ge = Greater or Equal
-            current_type = "int";
-            break;
-        case OPERATOR_EQUALITY:
-            emit("fcmp d0, d1");
-            emit("cset x0, eq"); // eq = Equal
-            current_type = "int";
-            break;
-        case EXCL_EQUAL:
-            emit("fcmp d0, d1");
-            emit("cset x0, ne"); // ne = Not Equal
-            current_type = "int";
-            break;
+            case TokenType::OPERATOR_LESS:
+                emit("fcmp s0, s1");
+                emit("cset x0, mi"); // mi = Minus (Less Than)
+                current_type = TypeSystem::Int64;
+                break;
+            case TokenType::OPERATOR_LESS_EQUALS:
+                emit("fcmp s0, s1");
+                emit("cset x0, le"); // le = Less or Equal
+                current_type = TypeSystem::Int64;
+                break;
+            case TokenType::OPERATOR_GREATER:
+                emit("fcmp s0, s1");
+                emit("cset x0, gt"); // gt = Greater Than
+                current_type = TypeSystem::Int64;
+                break;
+            case TokenType::OPERATOR_GREATER_EQUALS:
+                emit("fcmp s0, s1");
+                emit("cset x0, ge"); // ge = Greater or Equal
+                current_type = TypeSystem::Int64;
+                break;
+            case TokenType::OPERATOR_EQUALITY:
+                emit("fcmp s0, s1");
+                emit("cset x0, eq"); // eq = Equal
+                current_type = TypeSystem::Int64;
+                break;
+            case TokenType::EXCL_EQUAL:
+                emit("fcmp s0, s1");
+                emit("cset x0, ne"); // ne = Not Equal
+                current_type = TypeSystem::Int64;
+                break;
 
-        default:
-            break;
+            default: break;
+            }
+        } else {
+            current_type = TypeSystem::Float64;
+            if (leftType.size_bytes == 4) emit("fcvt d0, s0");
+
+            if (rightType.size_bytes == 4) emit("fcvt d1, s1");
+
+            switch (expr->op.type) {
+            case TokenType::OPERATOR_PLUS: emit("fadd d0, d0, d1"); break;
+            case TokenType::OPERATOR_MINUS: emit("fsub d0, d0, d1"); break;
+            case TokenType::OPERATOR_ASTERISK: emit("fmul d0, d0, d1"); break;
+            case TokenType::OPERATOR_FORWARD_SLASH: emit("fdiv d0, d0, d1"); break;
+
+            case TokenType::OPERATOR_LESS:
+                emit("fcmp d0, d1");
+                emit("cset x0, mi"); // mi = Minus (Less Than)
+                current_type = TypeSystem::Int64;
+                break;
+            case TokenType::OPERATOR_LESS_EQUALS:
+                emit("fcmp d0, d1");
+                emit("cset x0, le"); // le = Less or Equal
+                current_type = TypeSystem::Int64;
+                break;
+            case TokenType::OPERATOR_GREATER:
+                emit("fcmp d0, d1");
+                emit("cset x0, gt"); // gt = Greater Than
+                current_type = TypeSystem::Int64;
+                break;
+            case TokenType::OPERATOR_GREATER_EQUALS:
+                emit("fcmp d0, d1");
+                emit("cset x0, ge"); // ge = Greater or Equal
+                current_type = TypeSystem::Int64;
+                break;
+            case TokenType::OPERATOR_EQUALITY:
+                emit("fcmp d0, d1");
+                emit("cset x0, eq"); // eq = Equal
+                current_type = TypeSystem::Int64;
+                break;
+            case TokenType::EXCL_EQUAL:
+                emit("fcmp d0, d1");
+                emit("cset x0, ne"); // ne = Not Equal
+                current_type = TypeSystem::Int64;
+                break;
+
+            default: break;
+            }
         }
     } else {
-        current_type = "int";
+        current_type = TypeSystem::Int64;
+
+        bool is_unsigned_math = (!leftType.is_signed || !rightType.is_signed);
+
         switch (expr->op.type) {
-        case OPERATOR_PLUS:
-            emit("add x0, x0, x1");
-            break;
-        case OPERATOR_MINUS:
-            emit("sub x0, x0, x1");
-            break;
-        case OPERATOR_ASTERISK:
-            emit("mul x0, x0, x1");
-            break;
-        case OPERATOR_FORWARD_SLASH:
-            emit("sdiv x0, x0, x1");
+        case TokenType::OPERATOR_PLUS: emit("add x0, x0, x1"); break;
+        case TokenType::OPERATOR_MINUS: emit("sub x0, x0, x1"); break;
+        case TokenType::OPERATOR_ASTERISK: emit("mul x0, x0, x1"); break;
+        case TokenType::OPERATOR_FORWARD_SLASH:
+            if (is_unsigned_math)
+                emit("udiv x0, x0, x1");
+            else
+                emit("sdiv x0, x0, x1");
             break;
 
-        case OPERATOR_LESS:
-            emit("cmp x0, x1");
-            emit("cset x0, lt");
+        case TokenType::OPERATOR_LESS:
+            if (leftType.is_signed && rightType.is_signed) {
+                emit("cmp x0, x1");
+                emit("cset x0, lt");
+            } else if (!leftType.is_signed && !rightType.is_signed) {
+                emit("cmp x0, x1");
+                emit("cset x0, lo");
+            } else {
+                // Left < 0 or Left_Unsigned < Right_Unsigned
+                if (leftType.is_signed) {
+                    emit("cmp x0, #0");
+                    emit("cset x2, mi"); // x2 = 1 if Left is negative
+                    emit("cmp x0, x1");
+                    emit("cset x3, lo"); // x3 = 1 if Left < Right (numerically)
+                    emit("orr x0, x2, x3");
+                } else {
+                    // Right is Signed. Right >= 0 and Left < Right
+                    emit("cmp x1, #0");
+                    emit("cset x2, pl"); // x2 = 1 if Right is positive
+                    emit("cmp x0, x1");
+                    emit("cset x3, lo"); // x3 = 1 if Left < Right
+                    emit("and x0, x2, x3");
+                }
+            }
             break;
-        case OPERATOR_LESS_EQUALS:
-            emit("cmp x0, x1");
-            emit("cset x0, le");
+        case TokenType::OPERATOR_LESS_EQUALS:
+            if (leftType.is_signed && rightType.is_signed) {
+                emit("cmp x0, x1");
+                emit("cset x0, le");
+            } else if (!leftType.is_signed && !rightType.is_signed) {
+                emit("cmp x0, x1");
+                emit("cset x0, ls");
+            } else {
+                if (leftType.is_signed) {
+                    emit("cmp x0, #0");
+                    emit("cset x2, mi");
+                    emit("cmp x0, x1");
+                    emit("cset x3, ls");
+                    emit("orr x0, x2, x3");
+                } else {
+                    emit("cmp x1, #0");
+                    emit("cset x2, pl");
+                    emit("cmp x0, x1");
+                    emit("cset x3, ls");
+                    emit("and x0, x2, x3");
+                }
+            }
             break;
-        case OPERATOR_GREATER:
-            emit("cmp x0, x1");
-            emit("cset x0, gt");
+        case TokenType::OPERATOR_GREATER:
+            if (leftType.is_signed && rightType.is_signed) {
+                emit("cmp x0, x1");
+                emit("cset x0, gt");
+            } else if (!leftType.is_signed && !rightType.is_signed) {
+                emit("cmp x0, x1");
+                emit("cset x0, hi");
+            } else {
+                if (leftType.is_signed) {
+                    // Left >= 0 and Left > Right
+                    emit("cmp x0, #0");
+                    emit("cset x2, pl");
+                    emit("cmp x0, x1");
+                    emit("cset x3, hi");
+                    emit("and x0, x2, x3");
+                } else {
+                    // Right is Signed. Right < 0 OR Left > Right
+                    emit("cmp x1, #0");
+                    emit("cset x2, mi");
+                    emit("cmp x0, x1");
+                    emit("cset x3, hi");
+                    emit("orr x0, x2, x3");
+                }
+            }
             break;
-        case OPERATOR_GREATER_EQUALS:
-            emit("cmp x0, x1");
-            emit("cset x0, ge");
+        case TokenType::OPERATOR_GREATER_EQUALS:
+            if (leftType.is_signed && rightType.is_signed) {
+                emit("cmp x0, x1");
+                emit("cset x0, ge");
+            } else if (!leftType.is_signed && !rightType.is_signed) {
+                emit("cmp x0, x1");
+                emit("cset x0, hs");
+            } else {
+                if (leftType.is_signed) {
+                    emit("cmp x0, #0");
+                    emit("cset x2, pl");
+                    emit("cmp x0, x1");
+                    emit("cset x3, hs");
+                    emit("and x0, x2, x3");
+                } else {
+                    emit("cmp x1, #0");
+                    emit("cset x2, mi");
+                    emit("cmp x0, x1");
+                    emit("cset x3, hs");
+                    emit("orr x0, x2, x3");
+                }
+            }
             break;
-        case OPERATOR_EQUALITY:
+        case TokenType::OPERATOR_EQUALITY:
             emit("cmp x0, x1");
             emit("cset x0, eq");
             break;
-        case EXCL_EQUAL:
+        case TokenType::EXCL_EQUAL:
             emit("cmp x0, x1");
             emit("cset x0, ne");
             break;
-        default:
-            break;
+        default: break;
         }
     }
 }
 
-void CodeGen::visitGrouping(const GroupingExpr *expr) {
-    genExpr(expr->expr.get());
-}
+void CodeGen::visitGrouping(const GroupingExpr *expr) { genExpr(expr->expr.get()); }
 
 void CodeGen::visitUnary(const UnaryExpr *expr) {
     genExpr(expr->right.get());
 
     switch (expr->op.type) {
-    case OPERATOR_MINUS:
-        if (current_type == "float") {
-            emit("fneg d0, d0"); // Negate float
+    case TokenType::OPERATOR_MINUS:
+        if (current_type.is_float) {
+            if (current_type.size_bytes == 4) {
+                emit("fneg s0, s0");
+            } else {
+                emit("fneg d0, d0");
+            }
         } else {
-            emit("neg x0, x0"); // Negate int
+            if (current_type.size_bytes == 4) {
+                emit("neg w0, w0");
+            } else {
+                emit("neg x0, x0");
+            }
         }
         break;
-    case EXCLAMATION:
-        if (current_type == "float") {
-            emit("fcmp d0, #0.0");
-            emit("cset x0, eq");
-            current_type = "int";
+    case TokenType::EXCLAMATION:
+        if (current_type.is_float) {
+            if (current_type.size_bytes == 4) {
+                emit("fcmp s0, #0.0");
+                emit("cset x0, eq");
+            } else {
+                emit("fcmp d0, #0.0");
+                emit("cset x0, eq");
+            }
+            current_type = TypeSystem::Int64;
         } else {
-            emit("cmp x0, #0");
-            emit("cset x0, eq");
+            if (current_type.size_bytes == 4) {
+                emit("cmp w0, #0");
+                emit("cset w0, eq");
+            } else {
+                emit("cmp x0, #0");
+                emit("cset x0, eq");
+            }
         }
         break;
-    default:
-        throw std::runtime_error("Unknown unary operator");
+    default: throw std::runtime_error("Unknown unary operator");
     }
 }
 
 void CodeGen::visitFunctionCall(const FunctionCallExpr *expr) {
     // Evaluate arguments and push them (preserving type info)
-    std::vector<std::string> argTypes;
-    for (const auto &arg : expr->args) {
+    std::vector<Type> argTypes;
+    for (int i = 0; i < expr->args.size(); i++) {
+        const auto &arg = expr->args[i];
         genExpr(arg.get());
+
+        if (i < expr->param_types.size()) {
+            Type expected = expr->param_types[i];
+
+            // Float Casts
+            if (expected.is_float) {
+                if (!current_type.is_float) {
+                    emit("scvtf d0, x0");               // Int -> Float
+                    current_type = TypeSystem::Float64; // Treat as double initially
+                }
+
+                if (expected.size_bytes == 8 && current_type.size_bytes == 4) {
+                    emit("fcvt d0, s0"); // float -> double
+                    current_type = TypeSystem::Float64;
+                } else if (expected.size_bytes == 4 && current_type.size_bytes == 8) {
+                    emit("fcvt s0, d0"); // double -> float
+                    current_type = TypeSystem::Float32;
+                }
+            }
+            // Int Casts (Optional, but good for safety)
+            else if (!expected.is_float && current_type.is_float) {
+                emit("fcvtzs x0, d0"); // Float -> Int
+                current_type = TypeSystem::Int64;
+            }
+        }
+
         argTypes.push_back(current_type);
 
-        if (current_type == "float") {
+        if (current_type.is_float) {
             emit("str d0, [sp, #-16]!"); // Push float register directly
         } else {
             emit("str x0, [sp, #-16]!"); // Push int register
@@ -495,12 +721,16 @@ void CodeGen::visitFunctionCall(const FunctionCallExpr *expr) {
     int argCount = expr->args.size();
     for (int i = argCount - 1; i >= 0; --i) {
         if (i < 8) {
-            if (argTypes[i] == "float") {
-                emit("ldr d" + std::to_string(i) +
-                     ", [sp], #16"); // Load directly to float reg
+            if (argTypes[i].is_float) {
+                if (argTypes[i].size_bytes == 4)
+                    emit("ldr s" + std::to_string(i) + ", [sp], #16");
+                else
+                    emit("ldr d" + std::to_string(i) + ", [sp], #16");
             } else {
-                emit("ldr x" + std::to_string(i) +
-                     ", [sp], #16"); // Load to int reg
+                if (argTypes[i].size_bytes == 4)
+                    emit("ldr w" + std::to_string(i) + ", [sp], #16");
+                else
+                    emit("ldr x" + std::to_string(i) + ", [sp], #16");
             }
         }
     }
@@ -508,10 +738,23 @@ void CodeGen::visitFunctionCall(const FunctionCallExpr *expr) {
     std::string funcName = "_" + expr->name_token.lexeme;
     emit("bl " + funcName);
 
-    // Set return type
-    if (prog.var_type_lookup.count(expr->name_token.lexeme)) {
-        current_type = prog.var_type_lookup.at(expr->name_token.lexeme);
-    } else {
-        current_type = "int";
+    current_type = expr->return_type;
+
+    if (!current_type.is_float && current_type.size_bytes < 8) {
+        if (current_type.is_signed) {
+            if (current_type.size_bytes == 1)
+                emit("sxtb x0, w0"); // Sign-extend byte
+            else if (current_type.size_bytes == 2)
+                emit("sxth x0, w0"); // Sign-extend half
+            else if (current_type.size_bytes == 4)
+                emit("sxtw x0, w0"); // Sign-extend word
+        } else {
+            if (current_type.size_bytes == 1)
+                emit("uxtb x0, w0"); // Zero-extend byte
+            else if (current_type.size_bytes == 2)
+                emit("uxth x0, w0"); // Zero-extend half
+            else if (current_type.size_bytes == 4)
+                emit("uxtw x0, w0"); // Zero-extend word
+        }
     }
 }

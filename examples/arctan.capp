@@ -1,11 +1,11 @@
-float arctan_taylor(float x) {
-    float result = 0.0;
-    float term = x;
-    float x_sq = x * x;
-    float divisor = 1.0;
-    float sign = 1.0;
+float64 arctan_taylor(float64 x) {
+    float64 result = 0.0;
+    float64 term = x;
+    float64 x_sq = x * x;
+    float64 divisor = 1.0;
+    float64 sign = 1.0;
 
-    for (int i = 0; i < 100000; i = i + 1) {
+    for (uint32 i = 0; i < 100000; i = i + 1) {
         result = result + (sign * (term / divisor));
         term = term * x_sq;
         divisor = divisor + 2.0;
@@ -15,10 +15,10 @@ float arctan_taylor(float x) {
     return result;
 }
 
-float arctan(float x) {
+float64 arctan(float64 x) {
     if (abs_f(x) > 1.0) {
-        float pi_half = 1.570796;
-        float val = pi_half - arctan_taylor(1.0 / abs_f(x));
+        float64 pi_half = 1.570796;
+        float64 val = pi_half - arctan_taylor(1.0 / abs_f(x));
 
         if (x < 0.0) {
             return -val;
@@ -29,12 +29,12 @@ float arctan(float x) {
     return arctan_taylor(x);
 }
 
-int main() {
+uint8 main() {
     print_s("Enter a number:");
     
-    float x = input_f();
+    float64 x = input_f();
     
-    float res = arctan(x);
+    float64 res = arctan(x);
     
     print_s("Arctan(x) =");
     print_f(res);

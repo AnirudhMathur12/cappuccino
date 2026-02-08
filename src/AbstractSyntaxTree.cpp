@@ -4,6 +4,7 @@
 //
 
 #include "AbstractSyntaxTree.h"
+#include "Type.h"
 #include <ostream>
 #include <string>
 #include <type_traits>
@@ -31,6 +32,8 @@ void LiteralExpr::dump(int indent) const {
             using T = std::decay_t<decltype(val)>;
             if constexpr (std::is_same_v<std::string, T>) {
                 std::cout << "\"" << val << "\"";
+            } else if constexpr (std::is_same_v<std::monostate, T>) {
+                std::cout << "No Value";
             } else {
                 std::cout << val;
             }
@@ -39,13 +42,11 @@ void LiteralExpr::dump(int indent) const {
     std::cout << ")" << std::endl;
 }
 
-IdentifierExpr::IdentifierExpr(Token t, int off, std::string type)
-    : token(t), name(t.lexeme), offset(off), type(type) {} // Initialize type
+IdentifierExpr::IdentifierExpr(Token t, int off, Type type) : token(t), name(t.lexeme), offset(off), type(type) {} // Initialize type
 
 void IdentifierExpr::dump(int indent) const {
     std::string pad(indent, ' ');
-    std::cout << pad << "Identifier(" << name << " [offset: " << offset
-              << ", type: " << type << "])\n"; // Dump type
+    std::cout << pad << "Identifier(" << name << " [offset: " << offset << ", type: " << type.name << "])\n"; // Dump type
 }
 
 UnaryExpr::UnaryExpr(Token t, ExprPtr r) : op(t), right(std::move(r)) {}
@@ -56,8 +57,7 @@ void UnaryExpr::dump(int indent) const {
     right->dump(indent + 2);
 }
 
-BinaryExpr::BinaryExpr(Token t, ExprPtr l, ExprPtr r)
-    : op(t), left(std::move(l)), right(std::move(r)) {}
+BinaryExpr::BinaryExpr(Token t, ExprPtr l, ExprPtr r) : op(t), left(std::move(l)), right(std::move(r)) {}
 
 void BinaryExpr::dump(int indent) const {
     std::string pad(indent, ' ');
@@ -82,15 +82,12 @@ void ExprStmt::dump(int indent) const {
     expr->dump(indent + 2);
 }
 
-VariableDeclStmt::VariableDeclStmt(const Token &t, std::string n,
-                                   std::optional<ExprPtr> i, int off)
-    : type_token(t), name(std::move(n)), initializer(std::move(i)),
-      offset(off) {}
+VariableDeclStmt::VariableDeclStmt(const Token &t, std::string n, std::optional<ExprPtr> i, int off)
+    : type_token(t), name(std::move(n)), initializer(std::move(i)), offset(off) {}
 
 void VariableDeclStmt::dump(int indent) const {
     std::string pad(indent, ' ');
-    std::cout << pad << "VariableDecl(type=" << type_token.lexeme
-              << ", name=" << name << ", offset=" << offset << ")\n";
+    std::cout << pad << "VariableDecl(type=" << type_token.lexeme << ", name=" << name << ", offset=" << offset << ")\n";
     if (initializer) {
         std::cout << pad << "  Initializer:\n";
         (*initializer)->dump(indent + 4);
@@ -107,10 +104,8 @@ void BlockStmt::dump(int indent) const {
     }
 }
 
-IfStmt::IfStmt(ExprPtr c, StmtPtr then_branch,
-               std::optional<StmtPtr> else_branch)
-    : condition(std::move(c)), then_branch(std::move(then_branch)),
-      else_branch(std::move(else_branch)) {}
+IfStmt::IfStmt(ExprPtr c, StmtPtr then_branch, std::optional<StmtPtr> else_branch)
+    : condition(std::move(c)), then_branch(std::move(then_branch)), else_branch(std::move(else_branch)) {}
 
 void IfStmt::dump(int indent) const {
     std::string pad(indent, ' ');
@@ -125,8 +120,7 @@ void IfStmt::dump(int indent) const {
     }
 }
 
-WhileStmt::WhileStmt(ExprPtr c, StmtPtr b)
-    : condition(std::move(c)), body(std::move(b)) {}
+WhileStmt::WhileStmt(ExprPtr c, StmtPtr b) : condition(std::move(c)), body(std::move(b)) {}
 
 void WhileStmt::dump(int indent) const {
     std::string pad(indent, ' ');
@@ -137,10 +131,8 @@ void WhileStmt::dump(int indent) const {
     body->dump(indent + 4);
 }
 
-ForStmt::ForStmt(std::optional<StmtPtr> i, std::optional<ExprPtr> c,
-                 std::optional<ExprPtr> inc, StmtPtr b)
-    : initializer(std::move(i)), condition(std::move(c)),
-      increment(std::move(inc)), body(std::move(b)) {}
+ForStmt::ForStmt(std::optional<StmtPtr> i, std::optional<ExprPtr> c, std::optional<ExprPtr> inc, StmtPtr b)
+    : initializer(std::move(i)), condition(std::move(c)), increment(std::move(inc)), body(std::move(b)) {}
 
 void ForStmt::dump(int indent) const {
     std::string pad(indent, ' ');
@@ -155,8 +147,7 @@ void ForStmt::dump(int indent) const {
     body->dump(indent + 4);
 }
 
-ReturnStmt::ReturnStmt(const Token &t, std::optional<ExprPtr> v)
-    : ret_token(t), value(std::move(v)) {}
+ReturnStmt::ReturnStmt(const Token &t, std::optional<ExprPtr> v) : ret_token(t), value(std::move(v)) {}
 
 void ReturnStmt::dump(int indent) const {
     std::string pad(indent, ' ');
@@ -169,41 +160,36 @@ void ReturnStmt::dump(int indent) const {
     }
 }
 
-FunctionParameterStmt::FunctionParameterStmt(const Token &p_type_token,
-                                             const std::string &n, int off)
+FunctionParameterStmt::FunctionParameterStmt(const Token &p_type_token, const std::string &n, int off)
     : type_token(p_type_token), name(n), offset(off) {}
 
 void FunctionParameterStmt::dump(int indent) const {
     std::string pad(indent, ' ');
-    std::cout << pad << "Type: " << type_token.lexeme << " Name: " << name
-              << std::endl;
+    std::cout << pad << "Type: " << type_token.lexeme << " Name: " << name << std::endl;
 }
 
-FunctionDeclStmt::FunctionDeclStmt(Token rt, Token name, std::vector<StmtPtr> p,
-                                   StmtPtr b, int stack)
-    : return_type(std::move(rt)), name_token(std::move(name)),
-      params(std::move(p)), body(std::move(b)), stack_size(stack) {}
+FunctionDeclStmt::FunctionDeclStmt(Type rt, Token name, std::vector<StmtPtr> p, StmtPtr b, int stack)
+    : return_type(std::move(rt)), name_token(std::move(name)), params(std::move(p)), body(std::move(b)), stack_size(stack) {}
 
 void FunctionDeclStmt::dump(int indent) const {
     std::string pad(indent, ' ');
-    std::cout << pad << "Function " << name_token.lexeme << " returns "
-              << return_type.lexeme << "\n";
+    std::cout << pad << "Function " << name_token.lexeme << " returns " << return_type.name << "\n";
     std::cout << pad << "  Params:\n";
     for (auto &pr : params) {
         pr->dump(indent + 4);
     }
     std::cout << pad << "  Body:\n";
-    if (body)
-        body->dump(indent + 4);
+    if (body) body->dump(indent + 4);
 }
 
-FunctionCallExpr::FunctionCallExpr(const Token &n, std::vector<ExprPtr> p_args)
-    : name_token(n), args(std::move(p_args)) {}
+FunctionCallExpr::FunctionCallExpr(const Token &n, std::vector<ExprPtr> p_args, Type return_type, std::vector<Type> param_types)
+    : name_token(n), args(std::move(p_args)), return_type(return_type), param_types(std::move(param_types)) {}
 
 void FunctionCallExpr::dump(int indent) const {
     std::string pad(indent, ' ');
     std::cout << pad << "Function Call:" << std::endl;
     std::cout << pad << "\tFunction Name: " << name_token.lexeme << std::endl;
+    std::cout << pad << "\tReturn Type:" << return_type.name << std::endl;
     std::cout << pad << "\tArguements" << std::endl;
     for (auto &e : args) {
         e->dump(indent + 8);
