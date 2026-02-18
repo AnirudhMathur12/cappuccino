@@ -1,5 +1,7 @@
 # CMake
 build
+CMakeCache.txt
+CMakeFiles/
 
 # Clangd
 .cache

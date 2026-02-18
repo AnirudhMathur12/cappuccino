@@ -2,6 +2,7 @@
 
 #include "AbstractSyntaxTree.h"
 #include "CodeGen.h"
+#include "DebugVisitor.h"
 #include "Parser.h"
 #include "Token.h"
 #include "utils.h"
@@ -79,15 +80,20 @@ int main(int argc, char *argv[]) {
     Parser p(tokens);
     Program prog = p.parse();
 
-    if (show_ast) prog.dump();
-    if (stop_at_ast) return 0;
+    if (show_ast) {
+        DebugVisitor debugger;
+        std::cout << "Program\n";
+        for (const auto &stmt : prog.statements) {
+            stmt->accept(debugger);
+        }
+        if (stop_at_ast) return 0;
+    }
 
     std::ofstream asmFile("output.s");
     if (!asmFile.is_open()) {
         std::cerr << "Failed to write assembly file." << std::endl;
         return 1;
     }
-
     CodeGen generator(prog, asmFile);
     generator.generate();
     asmFile.close();

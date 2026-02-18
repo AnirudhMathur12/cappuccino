@@ -17,6 +17,8 @@ enum class TypeKind {
     STRUCT // TODO: Implement a struct eventually...
 };
 
+std::string kind_to_string(TypeKind tk);
+
 struct Type {
     std::string name;
     TypeKind kind;
@@ -54,6 +56,7 @@ class TypeSystem {
 
     static Type from_string(const std::string &typeName);
     static Type createArray(const Type &base, int length);
+    static Type createPointer(const Type &base);
 };
 
 #endif

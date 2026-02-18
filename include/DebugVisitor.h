@@ -1,20 +1,16 @@
-#ifndef CAPPUCCINO_CODEGEN_H_
-#define CAPPUCCINO_CODEGEN_H_
+//
+// Created by Anirudh Mathur on 13/11/25.
+//
 
-#include "AbstractSyntaxTree.h"
-#include "Type.h"
+#ifndef CAPPUCCINO_DEBUGVISITOR_H
+#define CAPPUCCINO_DEBUGVISITOR_H
+
 #include "Visitor.h"
-#include <iostream>
 #include <string>
-#include <vector>
 
-class CodeGen : public Visitor {
+class DebugVisitor : public Visitor {
   public:
-    CodeGen(const Program &prog, std::ostream &output);
-
-    void generate();
-
-    // Visitor Implementation
+    // Expressions
     void visitLiteralExpr(const LiteralExpr *expr) override;
     void visitIdentifierExpr(const IdentifierExpr *expr) override;
     void visitUnaryExpr(const UnaryExpr *expr) override;
@@ -22,6 +18,7 @@ class CodeGen : public Visitor {
     void visitGroupingExpr(const GroupingExpr *expr) override;
     void visitFunctionCallExpr(const FunctionCallExpr *expr) override;
 
+    // Statements
     void visitExprStmt(const ExprStmt *stmt) override;
     void visitVariableDeclStmt(const VariableDeclStmt *stmt) override;
     void visitBlockStmt(const BlockStmt *stmt) override;
@@ -33,25 +30,8 @@ class CodeGen : public Visitor {
     void visitFunctionDeclStmt(const FunctionDeclStmt *stmt) override;
 
   private:
-    const Program &prog;
-    std::ostream &out;
-    int label_counter = 0;
-    std::vector<std::pair<std::string, std::string>> string_literals;
-
-    Type current_type = TypeSystem::Int32;
-    int current_func_stack_size = 0;
-
-    // State to track parameter index during function declaration
-    int current_param_index = 0;
-
-    std::string nextLabel(const std::string &prefix);
-    void emit(const std::string &instr);
-    void emitLabel(const std::string &label);
-
-    // Helpers
-    void visitAssignment(const BinaryExpr *expr);
-    void genStmt(const Stmt *stmt);
-    void genExpr(const Expr *expr);
+    int indent_level = 0;
+    std::string pad() const;
 };
 
-#endif // CAPPUCCINO_CODEGEN_H_
+#endif // CAPPUCCINO_DEBUGVISITOR_H
