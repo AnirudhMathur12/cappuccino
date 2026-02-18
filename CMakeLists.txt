@@ -81,6 +81,7 @@ set(SOURCES
     src/Parser.cpp
     src/Type.cpp
     src/SymbolTable.cpp
+    src/DebugVisitor.cpp
 )
 
 set(HEADERS
@@ -92,11 +93,13 @@ set(HEADERS
         include/capp_stdlib.h
         include/Type.h
         include/SymbolTable.h
+        include/DebugVisitor.h
+        include/Visitor.h
 )
 
 configure_file(
     "${PROJECT_SOURCE_DIR}/include/version.h.in"
-    "${PROJECT_BINARY_DIR}/include/version.h"
+    "${PROJECT_BINARY_DIR}/include/version.h"  
     @ONLY
 )
 
@@ -112,6 +115,7 @@ target_include_directories(${PROJECT_NAME}
         ${PROJECT_SOURCE_DIR}
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_BINARY_DIR}
+        ${PROJECT_BINARY_DIR}/include
 )
 
 if(APPLE)

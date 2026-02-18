@@ -1,6 +1,16 @@
 #include "include/Type.h"
-#include <iostream>
 #include <string>
+
+std::string kind_to_string(TypeKind tk) {
+    switch (tk) {
+    case TypeKind::PRIMITIVE: return "PRIMITIVE"; break;
+    case TypeKind::ARRAY: return "ARRAY"; break;
+    case TypeKind::POINTER: return "POINTER"; break;
+    case TypeKind::STRUCT: return "STRUCT"; break;
+    case TypeKind::VOID: return "VOID"; break;
+    default: return "NO TYPE"; break;
+    }
+}
 
 // Signed Integers
 
@@ -83,3 +93,13 @@ bool Type::operator==(const Type &other) const {
 }
 
 bool Type::operator!=(const Type &other) const { return !(*this == other); }
+
+Type TypeSystem::createPointer(const Type &base) {
+    return Type{.name = base.name + "*",
+                .kind = TypeKind::POINTER,
+                .size_bytes = 8, // Assuming 64-bit architecture
+                .is_signed = false,
+                .is_float = false,
+                .baseType = std::make_shared<Type>(base),
+                .array_length = 0};
+}

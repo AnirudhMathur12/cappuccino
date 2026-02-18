@@ -101,7 +101,7 @@ ExprPtr Parser::parsePrimary() {
                 returnType = sym->type;
                 paramTypes = sym->param_types;
             } else {
-                std::cerr << "Warning: Implicit declaration of function '" << identifierName.lexeme << "'" << std::endl;
+                throw ParseError(identifierName, "Implicit declaration of '" + identifierName.lexeme + "' is not allowed.");
             }
 
             return std::make_unique<FunctionCallExpr>(std::move(identifierName), std::move(args), returnType, paramTypes);
@@ -123,7 +123,8 @@ ExprPtr Parser::parsePrimary() {
 }
 
 ExprPtr Parser::parseUnary() {
-    if (match(TokenType::OPERATOR_MINUS) || match(TokenType::EXCLAMATION)) {
+    if (match(TokenType::OPERATOR_MINUS) || match(TokenType::EXCLAMATION) || match(TokenType::OPERATOR_AMPERSAND) ||
+        match(TokenType::OPERATOR_ASTERISK)) {
         Token op = previous();
         ExprPtr right = parseUnary();
         return std::make_unique<UnaryExpr>(op, std::move(right));
@@ -192,7 +193,13 @@ ExprPtr Parser::parseAssignment() {
             return std::make_unique<BinaryExpr>(equals, std::move(left), std::move(right));
         }
 
-        throw ParseError(previous(), "Invalid assignment target.");
+        if (auto *unary = dynamic_cast<UnaryExpr *>(left.get())) {
+            if (unary->op.type == TokenType::OPERATOR_ASTERISK) {
+                return std::make_unique<BinaryExpr>(equals, std::move(left), std::move(right));
+            }
+        }
+
+        throw ParseError(previous(), "Invalid assignment target. Only variables or pointer dereferences are allowed.");
     }
 
     return left;
@@ -251,11 +258,17 @@ std::stack<std::string> var_lookup;
 std::unordered_map<std::string, int> data_type_size_lookup = {{"int", 8}, {"float", 8}};
 
 StmtPtr Parser::parseVarOrFunctionDecl() {
+    bool isPtr = false;
     Token identifierTypeToken = previous();
-    consume(TokenType::IDENTIFIER, "Expected identifier name");
-    Token identifierName = previous();
 
     Type type = TypeSystem::from_string(identifierTypeToken.lexeme);
+    while (check(TokenType::OPERATOR_ASTERISK)) {
+        type = TypeSystem::createPointer(type);
+        advance();
+    }
+
+    consume(TokenType::IDENTIFIER, "Expected identifier name");
+    Token identifierName = previous();
 
     if (match(TokenType::LEFT_PAREN)) {
         // Save the current stack offset to restore after this function
@@ -324,7 +337,7 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
 
     std::cout << "  Var: " << identifierName.lexeme << " at offset " << sym->offset << std::endl;
 
-    return std::make_unique<VariableDeclStmt>(identifierTypeToken, identifierName.lexeme, std::move(init), sym->offset);
+    return std::make_unique<VariableDeclStmt>(identifierTypeToken, identifierName.lexeme, std::move(init), sym->offset, type);
 }
 
 StmtPtr Parser::parseBlock() {
