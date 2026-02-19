@@ -1,4 +1,4 @@
-#include "include/Type.h"
+#include "Type.h"
 #include <string>
 
 std::string kind_to_string(TypeKind tk) {
@@ -8,6 +8,7 @@ std::string kind_to_string(TypeKind tk) {
     case TypeKind::POINTER: return "POINTER"; break;
     case TypeKind::STRUCT: return "STRUCT"; break;
     case TypeKind::VOID: return "VOID"; break;
+    case TypeKind::SLICE: return "SLICE"; break;
     default: return "NO TYPE"; break;
     }
 }
@@ -44,8 +45,8 @@ const Type TypeSystem::Void = {.name = "void", .kind = TypeKind::VOID, .size_byt
 
 // StringLiteral is treated as a pointer (8 bytes) to a uint8 (char)
 const Type TypeSystem::StringLiteral = {.name = "string",
-                                        .kind = TypeKind::POINTER,
-                                        .size_bytes = 8,
+                                        .kind = TypeKind::SLICE,
+                                        .size_bytes = 16,
                                         .is_signed = false,
                                         .is_float = false,
                                         .baseType = std::make_shared<Type>(TypeSystem::UInt8)};

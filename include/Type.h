@@ -14,7 +14,8 @@ enum class TypeKind {
     VOID,
     POINTER,
     ARRAY,
-    STRUCT // TODO: Implement a struct eventually...
+    STRUCT, // TODO: Implement a struct eventually...
+    SLICE
 };
 
 std::string kind_to_string(TypeKind tk);

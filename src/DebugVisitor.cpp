@@ -65,9 +65,32 @@ void DebugVisitor::visitFunctionCallExpr(const FunctionCallExpr *expr) {
     indent_level -= 8;
 }
 
-void DebugVisitor::visitArrayAccessExpr(const ArrayAccessExpr *expr) {}
+void DebugVisitor::visitArrayAccessExpr(const ArrayAccessExpr *expr) {
+    std::cout << pad() << "ArrayAccess\n";
 
-void DebugVisitor::visitArrayLiteralExpr(const ArrayLiteralExpr *expr) {}
+    std::cout << pad() << "  Array:\n";
+    indent_level += 4;
+    expr->array->accept(*this);
+    indent_level -= 4;
+
+    std::cout << pad() << "  Index:\n";
+    indent_level += 4;
+    expr->idx->accept(*this);
+    indent_level -= 4;
+}
+
+void DebugVisitor::visitArrayLiteralExpr(const ArrayLiteralExpr *expr) {
+    std::cout << pad() << "ArrayLiteral (" << expr->elements.size() << " elements)\n";
+
+    indent_level += 2;
+    for (size_t i = 0; i < expr->elements.size(); i++) {
+        std::cout << pad() << "[" << i << "]:\n";
+        indent_level += 2;
+        expr->elements[i]->accept(*this);
+        indent_level -= 2;
+    }
+    indent_level -= 2;
+}
 
 // Statements
 

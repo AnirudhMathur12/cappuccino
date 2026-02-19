@@ -6,7 +6,6 @@
 #include "AbstractSyntaxTree.h"
 #include "Type.h"
 #include "Visitor.h"
-#include <_strings.h>
 #include <string>
 #include <type_traits>
 #include <variant>
@@ -16,11 +15,10 @@ LiteralExpr::LiteralExpr(const Token &t) : token(t) {
         [&](auto &&src) {
             using T = std::decay_t<decltype(src)>;
 
-            if constexpr (!std::is_same_v<T, std::monostate>) {
-                value = src;
-            } else {
-                // Will never happen, made to suffice exhaustibility
-            }
+            if constexpr (std::is_same_v<T, std::monostate>)
+                throw std::logic_error("LiteralExpr constructed from token with no value — parser bug");
+
+            value = src;
         },
         t.fd);
 }

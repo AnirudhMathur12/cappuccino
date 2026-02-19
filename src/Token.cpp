@@ -3,12 +3,23 @@
 //
 
 #include "Token.h"
+#include "utils.h"
 
 #include <cstdint>
 #include <cstdlib>
 #include <type_traits>
 #include <unordered_map>
 #include <variant>
+
+LexError::LexError(int line, int col, uint32_t codepoint)
+    : std::runtime_error("Lexer error at " + std::to_string(line) + ":" + std::to_string(col) + ": unexpected character U+" +
+                         to_unicode(codepoint)) {}
+
+std::string LexError::to_unicode(uint32_t codepoint) {
+    std::ostringstream oss;
+    oss << std::uppercase << std::hex << std::setw(4) << std::setfill('0') << codepoint;
+    return oss.str();
+}
 
 Token::Token(const std::string &p_lexeme, int p_row, int p_col, TokenType p_type)
     : lexeme(p_lexeme), row(p_row), column(p_col), type(p_type) {
@@ -91,7 +102,7 @@ inline std::string token_type_to_string(TokenType type) {
     }
 }
 
-inline std::string fd_to_string(FormattedData &fd) {
+inline std::string fd_to_string(const FormattedData &fd) {
     return std::visit(
         [](auto &&value) -> std::string {
             using T = std::decay_t<decltype(value)>;
@@ -163,6 +174,12 @@ std::vector<Token> Tokenizer::tokenize() {
                 tokens.push_back(identifier());
             } else {
                 // What the fuck was in that file
+                auto [codepoint, byte_count] = decode_utf8(src, current - 1);
+                // Consume the remaining bytes of the sequence
+                for (int i = 1; i < byte_count; i++)
+                    advance();
+
+                throw LexError(line, column, codepoint);
             }
         }
     }
