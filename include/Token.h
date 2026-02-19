@@ -25,6 +25,8 @@ enum class TokenType {
     RIGHT_PAREN,
     LEFT_CURLY,
     RIGHT_CURLY,
+    LEFT_SQUARE,
+    RIGHT_SQUARE,
 
     // Control Flow
     KEYWORD_IF,

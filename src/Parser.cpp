@@ -2,6 +2,7 @@
 #include "AbstractSyntaxTree.h"
 #include "Token.h"
 #include "Type.h"
+#include <cstdint>
 #include <iostream>
 #include <memory>
 #include <sstream>
@@ -106,6 +107,21 @@ ExprPtr Parser::parsePrimary() {
 
             return std::make_unique<FunctionCallExpr>(std::move(identifierName), std::move(args), returnType, paramTypes);
         }
+
+        if (match(TokenType::LEFT_SQUARE)) {
+            Token bracket = previous();
+            ExprPtr index = parseExpression();
+            consume(TokenType::RIGHT_SQUARE, "Expected ']' after array index.");
+
+            auto sym = symbolTable.lookup(identifierName.lexeme);
+            if (!sym) {
+                throw ParseError(identifierName, "Undefined variable '" + identifierName.lexeme + "'.");
+            }
+
+            auto arrayIdent = std::make_unique<IdentifierExpr>(identifierName, sym->offset, sym->type);
+            return std::make_unique<ArrayAccessExpr>(std::move(arrayIdent), std::move(index), bracket);
+        }
+
         auto sym = symbolTable.lookup(identifierName.lexeme);
         if (!sym) {
             throw ParseError(identifierName, "Undefined variable '" + identifierName.lexeme + "'.");
@@ -117,6 +133,19 @@ ExprPtr Parser::parsePrimary() {
         ExprPtr expr = parseExpression();
         consume(TokenType::RIGHT_PAREN, "Expected ')' after expression. ");
         return std::make_unique<GroupingExpr>(std::move(expr));
+    }
+
+    if (match(TokenType::LEFT_CURLY)) {
+        std::vector<ExprPtr> elements;
+
+        if (!match(TokenType::RIGHT_CURLY)) {
+            do {
+                elements.push_back(parseExpression());
+            } while (match(TokenType::COMMA));
+        }
+
+        consume(TokenType::RIGHT_CURLY, "Expected '}' after array initializer.");
+        return std::make_unique<ArrayLiteralExpr>(std::move(elements));
     }
 
     throw ParseError(previous(), "Expected expression");
@@ -199,6 +228,10 @@ ExprPtr Parser::parseAssignment() {
             }
         }
 
+        if (auto *arrAccess = dynamic_cast<ArrayAccessExpr *>(left.get())) {
+            return std::make_unique<BinaryExpr>(equals, std::move(left), std::move(right));
+        }
+
         throw ParseError(previous(), "Invalid assignment target. Only variables or pointer dereferences are allowed.");
     }
 
@@ -262,6 +295,15 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
     Token identifierTypeToken = previous();
 
     Type type = TypeSystem::from_string(identifierTypeToken.lexeme);
+
+    if (match(TokenType::LEFT_SQUARE)) {
+        consume(TokenType::LITERAL_INTEGER, "Expected array length. ");
+        int length = std::get<uint64_t>(previous().fd);
+        consume(TokenType::RIGHT_SQUARE, "Expected ']' after array length.");
+
+        type = TypeSystem::createArray(type, length);
+    }
+
     while (check(TokenType::OPERATOR_ASTERISK)) {
         type = TypeSystem::createPointer(type);
         advance();

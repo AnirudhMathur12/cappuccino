@@ -5,6 +5,7 @@
 #ifndef CAPPUCCINO_DEBUGVISITOR_H
 #define CAPPUCCINO_DEBUGVISITOR_H
 
+#include "AbstractSyntaxTree.h"
 #include "Visitor.h"
 #include <string>
 
@@ -17,6 +18,8 @@ class DebugVisitor : public Visitor {
     void visitBinaryExpr(const BinaryExpr *expr) override;
     void visitGroupingExpr(const GroupingExpr *expr) override;
     void visitFunctionCallExpr(const FunctionCallExpr *expr) override;
+    void visitArrayAccessExpr(const ArrayAccessExpr *expr) override;
+    void visitArrayLiteralExpr(const ArrayLiteralExpr *expr) override;
 
     // Statements
     void visitExprStmt(const ExprStmt *stmt) override;

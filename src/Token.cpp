@@ -36,8 +36,10 @@ inline std::string token_type_to_string(TokenType type) {
     case TokenType::LEFT_PAREN: return "LEFT_PAREN";
     case TokenType::RIGHT_PAREN: return "RIGHT_PAREN";
     case TokenType::LEFT_CURLY: return "LEFT_CURLY";
-    case TokenType::RIGHT_CURLY:
-        return "RIGHT_CURLY";
+    case TokenType::RIGHT_CURLY: return "RIGHT_CURLY";
+    case TokenType::LEFT_SQUARE: return "LEFT_SQUARE";
+    case TokenType::RIGHT_SQUARE:
+        return "RIGHT_SQUARE";
 
         // Control Flow
     case TokenType::KEYWORD_IF: return "KEYWORD_IF";
@@ -129,6 +131,8 @@ std::vector<Token> Tokenizer::tokenize() {
         case ')': tokens.push_back(makeToken(TokenType::RIGHT_PAREN)); break;
         case '{': tokens.push_back(makeToken(TokenType::LEFT_CURLY)); break;
         case '}': tokens.push_back(makeToken(TokenType::RIGHT_CURLY)); break;
+        case '[': tokens.push_back(makeToken(TokenType::LEFT_SQUARE)); break;
+        case ']': tokens.push_back(makeToken(TokenType::RIGHT_SQUARE)); break;
         case '+': tokens.push_back(makeToken(TokenType::OPERATOR_PLUS)); break;
         case '-': tokens.push_back(makeToken(TokenType::OPERATOR_MINUS)); break;
         case ';': tokens.push_back(makeToken(TokenType::SEMICOLON)); break;

@@ -1,6 +1,7 @@
 #ifndef CAPPUCCINO_VISITOR_H
 #define CAPPUCCINO_VISITOR_H
 
+#include "AbstractSyntaxTree.h"
 struct LiteralExpr;
 struct IdentifierExpr;
 struct UnaryExpr;
@@ -29,6 +30,8 @@ class Visitor {
     virtual void visitBinaryExpr(const BinaryExpr *expr) = 0;
     virtual void visitGroupingExpr(const GroupingExpr *expr) = 0;
     virtual void visitFunctionCallExpr(const FunctionCallExpr *expr) = 0;
+    virtual void visitArrayAccessExpr(const ArrayAccessExpr *expr) = 0;
+    virtual void visitArrayLiteralExpr(const ArrayLiteralExpr *expr) = 0;
 
     // Statements
     virtual void visitExprStmt(const ExprStmt *stmt) = 0;

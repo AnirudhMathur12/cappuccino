@@ -6,6 +6,7 @@
 #include "AbstractSyntaxTree.h"
 #include "Type.h"
 #include "Visitor.h"
+#include <_strings.h>
 #include <string>
 #include <type_traits>
 #include <variant>
@@ -35,6 +36,11 @@ BinaryExpr::BinaryExpr(Token t, ExprPtr l, ExprPtr r) : op(t), left(std::move(l)
 GroupingExpr::GroupingExpr(ExprPtr e) : expr(std::move(e)) {}
 
 ExprStmt::ExprStmt(ExprPtr e) : expr(std::move(e)) {}
+
+ArrayAccessExpr::ArrayAccessExpr(ExprPtr array, ExprPtr idx, Token bracket)
+    : array(std::move(array)), idx(std::move(idx)), bracket_token(bracket) {}
+
+ArrayLiteralExpr::ArrayLiteralExpr(std::vector<ExprPtr> elems) : elements(std::move(elems)) {}
 
 VariableDeclStmt::VariableDeclStmt(const Token &t, std::string n, std::optional<ExprPtr> i, int off, Type type)
     : type_token(t), name(std::move(n)), initializer(std::move(i)), offset(off), type(type) {}
@@ -73,6 +79,10 @@ void BinaryExpr::accept(Visitor &visitor) const { visitor.visitBinaryExpr(this);
 void GroupingExpr::accept(Visitor &visitor) const { visitor.visitGroupingExpr(this); }
 
 void FunctionCallExpr::accept(Visitor &visitor) const { visitor.visitFunctionCallExpr(this); }
+
+void ArrayAccessExpr::accept(Visitor &visitor) const { visitor.visitArrayAccessExpr(this); }
+
+void ArrayLiteralExpr::accept(Visitor &visitor) const { visitor.visitArrayLiteralExpr(this); }
 
 void ExprStmt::accept(Visitor &visitor) const { visitor.visitExprStmt(this); }
 

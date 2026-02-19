@@ -75,6 +75,22 @@ struct FunctionCallExpr : Expr {
     void accept(Visitor &visitor) const override;
 };
 
+struct ArrayAccessExpr : Expr {
+    ExprPtr array;
+    ExprPtr idx;
+    Token bracket_token;
+
+    ArrayAccessExpr(ExprPtr array, ExprPtr idx, Token bracket);
+    void accept(Visitor &visitor) const override;
+};
+
+struct ArrayLiteralExpr : Expr {
+    std::vector<ExprPtr> elements;
+
+    ArrayLiteralExpr(std::vector<ExprPtr> elements);
+    void accept(Visitor &visitor) const override;
+};
+
 struct ExprStmt : Stmt {
     ExprPtr expr;
 

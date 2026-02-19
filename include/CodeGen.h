@@ -21,6 +21,8 @@ class CodeGen : public Visitor {
     void visitBinaryExpr(const BinaryExpr *expr) override;
     void visitGroupingExpr(const GroupingExpr *expr) override;
     void visitFunctionCallExpr(const FunctionCallExpr *expr) override;
+    void visitArrayAccessExpr(const ArrayAccessExpr *expr) override;
+    void visitArrayLiteralExpr(const ArrayLiteralExpr *expr) override;
 
     void visitExprStmt(const ExprStmt *stmt) override;
     void visitVariableDeclStmt(const VariableDeclStmt *stmt) override;
@@ -37,6 +39,7 @@ class CodeGen : public Visitor {
     std::ostream &out;
     int label_counter = 0;
     std::vector<std::pair<std::string, std::string>> string_literals;
+    bool requires_bounds_panic = false;
 
     Type current_type = TypeSystem::Int32;
     int current_func_stack_size = 0;

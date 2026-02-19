@@ -26,6 +26,7 @@ struct Type {
 
     bool is_signed = true;
     bool is_float = false;
+    bool is_array = false;
 
     std::shared_ptr<Type> baseType;
     int array_length = 0;

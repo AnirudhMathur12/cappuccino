@@ -3,6 +3,7 @@
 #include "Token.h"
 #include "Type.h"
 #include "capp_stdlib.h"
+#include <cmath>
 #include <cstdint>
 #include <iomanip>
 #include <sstream>
@@ -28,12 +29,84 @@ void CodeGen::genExpr(const Expr *expr) {
     if (expr) expr->accept(*this);
 }
 
+void CodeGen::visitArrayAccessExpr(const ArrayAccessExpr *expr) {
+    genExpr(expr->idx.get());
+
+    auto *ident = dynamic_cast<const IdentifierExpr *>(expr->array.get());
+    if (!ident) throw std::runtime_error("Only direct array identifiers are supported in MVP.");
+
+    Type arrayType = ident->type;
+    Type elementType = *arrayType.baseType;
+    int length = arrayType.array_length;
+
+    requires_bounds_panic = true; // Tell the compiler to emit the panic routine later
+    emit("cmp x0, #" + std::to_string(length));
+    emit("b.hs L_bounds_violation_panic");
+
+    int shift = 0;
+    if (elementType.size_bytes == 8)
+        shift = 3; // * 8
+    else if (elementType.size_bytes == 4)
+        shift = 2; // * 4
+    else if (elementType.size_bytes == 2)
+        shift = 1; // * 2
+
+    if (shift > 0)
+        emit("lsl x1, x0, #" + std::to_string(shift));
+    else
+        emit("mov x1, x0"); // 1 byte size
+
+    // 4. Calculate actual address: (Frame Pointer - Array Base Offset) + Element Offset
+    emit("sub x2, x29, #" + std::to_string(ident->offset));
+    emit("add x2, x2, x1"); // x2 now holds the exact address of arr[i]
+
+    // 5. Load the value from memory into our working register
+    if (elementType.is_float) {
+        if (elementType.size_bytes == 4)
+            emit("ldr s0, [x2]");
+        else
+            emit("ldr d0, [x2]");
+    } else {
+        if (elementType.size_bytes == 1) {
+            if (elementType.is_signed)
+                emit("ldrsb x0, [x2]");
+            else
+                emit("ldrb w0, [x2]");
+        } else if (elementType.size_bytes == 2) {
+            if (elementType.is_signed)
+                emit("ldrsh x0, [x2]");
+            else
+                emit("ldrh w0, [x2]");
+        } else if (elementType.size_bytes == 4) {
+            emit("ldr w0, [x2]");
+        } else {
+            emit("ldr x0, [x2]");
+        }
+    }
+
+    current_type = elementType;
+}
+
+void CodeGen::visitArrayLiteralExpr(const ArrayLiteralExpr *expr) {
+    throw std::runtime_error("Array literals are currently only supported in variable declarations.");
+}
+
 void CodeGen::generate() {
     out << ".globl _main\n";
     out << ".align 2\n\n";
 
     for (const auto &s : prog.statements) {
         genStmt(s.get());
+    }
+
+    if (requires_bounds_panic) {
+        emitLabel("L_bounds_violation_panic");
+        emit("adrp x0, L_panic_msg@PAGE");
+        emit("add x0, x0, L_panic_msg@PAGEOFF");
+        emit("bl _printf");
+        emit("brk #1"); // Hardware trap
+
+        string_literals.push_back({"L_panic_msg", "Runtime Error: Array index out of bounds!\\n"});
     }
 
     if (!string_literals.empty()) {
@@ -75,6 +148,60 @@ void CodeGen::visitReturnStmt(const ReturnStmt *stmt) {
 
 void CodeGen::visitVariableDeclStmt(const VariableDeclStmt *stmt) {
     if (stmt->initializer) {
+
+        if (auto *arrayLit = dynamic_cast<const ArrayLiteralExpr *>(stmt->initializer.value().get())) {
+            Type varType = stmt->type;
+
+            if (varType.kind != TypeKind::ARRAY) {
+                throw std::runtime_error("Cannot assign an array literal to a non-array type.");
+            }
+            if (arrayLit->elements.size() > varType.array_length) {
+                throw std::runtime_error("Too many initializers for array bounds.");
+            }
+
+            Type elementType = *varType.baseType;
+            int element_size = elementType.size_bytes;
+
+            // Iterate through the literal values
+            for (int i = 0; i < arrayLit->elements.size(); i++) {
+                genExpr(arrayLit->elements[i].get());
+
+                if (elementType.is_float) {
+                    if (!current_type.is_float) {
+                        emit("scvtf d0, x0");
+                        current_type = (current_type.size_bytes == 4) ? TypeSystem::Float32 : TypeSystem::Float64;
+                    }
+                    if (elementType.size_bytes == 4 && current_type.size_bytes == 8)
+                        emit("fcvt s0, d0");
+                    else if (elementType.size_bytes == 8 && current_type.size_bytes == 4)
+                        emit("fcvt d0, s0");
+                } else {
+                    if (current_type.is_float) emit("fcvtzs x0, d0");
+                }
+
+                // Array base is at: x29 - stmt->offset
+                // Element address is: Array base + (i * element_size)
+                int memory_offset = stmt->offset - (i * element_size);
+
+                if (elementType.is_float) {
+                    if (elementType.size_bytes == 4)
+                        emit("stur s0, [x29, #-" + std::to_string(memory_offset) + "]");
+                    else
+                        emit("stur d0, [x29, #-" + std::to_string(memory_offset) + "]");
+                } else {
+                    if (elementType.size_bytes == 1)
+                        emit("sturb w0, [x29, #-" + std::to_string(memory_offset) + "]");
+                    else if (elementType.size_bytes == 2)
+                        emit("sturh w0, [x29, #-" + std::to_string(memory_offset) + "]");
+                    else if (elementType.size_bytes == 4)
+                        emit("stur w0, [x29, #-" + std::to_string(memory_offset) + "]");
+                    else
+                        emit("stur x0, [x29, #-" + std::to_string(memory_offset) + "]");
+                }
+            }
+            return;
+        }
+
         genExpr(stmt->initializer.value().get());
 
         Type varType = TypeSystem::from_string(stmt->type_token.lexeme);
@@ -723,6 +850,75 @@ void CodeGen::visitAssignment(const BinaryExpr *expr) {
 
         current_type = targetType;
 
+    } else if (auto *arrAccess = dynamic_cast<const ArrayAccessExpr *>(expr->left.get())) {
+        genExpr(expr->right.get());
+
+        if (current_type.is_float)
+            emit("str d0, [sp, #-16]!");
+        else
+            emit("str x0, [sp, #-16]!");
+
+        genExpr(arrAccess->idx.get());
+
+        auto *ident = dynamic_cast<const IdentifierExpr *>(arrAccess->array.get());
+        Type targetType = *ident->type.baseType;
+
+        requires_bounds_panic = true;
+        emit("cmp x0, #" + std::to_string(ident->type.array_length));
+        emit("b.hs L_bounds_violation_panic");
+
+        int shift = (targetType.size_bytes == 8) ? 3 : (targetType.size_bytes == 4) ? 2 : (targetType.size_bytes == 2) ? 1 : 0;
+        if (shift > 0)
+            emit("lsl x1, x0, #" + std::to_string(shift));
+        else
+            emit("mov x1, x0");
+
+        emit("sub x2, x29, #" + std::to_string(ident->offset));
+        emit("add x2, x2, x1");
+
+        if (current_type.is_float)
+            emit("ldr d0, [sp], #16");
+        else
+            emit("ldr x0, [sp], #16");
+
+        if (targetType.is_float) {
+            if (!current_type.is_float) {
+                emit("scvtf d0, x0"); // Int -> Float
+                current_type = (current_type.size_bytes == 4) ? TypeSystem::Float32 : TypeSystem::Float64;
+            }
+
+            // Float64 -> Float32 (Downcast)
+            if (targetType.size_bytes == 4 && current_type.size_bytes == 8) {
+                emit("fcvt s0, d0");
+            }
+            // Float32 -> Float64 (Upcast)
+            else if (targetType.size_bytes == 8 && current_type.size_bytes == 4) {
+                emit("fcvt d0, s0");
+            }
+        } else {
+            // Float -> Int
+            if (current_type.is_float) {
+                emit("fcvtzs x0, d0");
+            }
+        }
+
+        if (targetType.is_float) {
+            if (targetType.size_bytes == 4)
+                emit("str s0, [x2]");
+            else
+                emit("str d0, [x2]");
+        } else {
+            if (targetType.size_bytes == 1)
+                emit("strb w0, [x2]");
+            else if (targetType.size_bytes == 2)
+                emit("strh w0, [x2]");
+            else if (targetType.size_bytes == 4)
+                emit("str w0, [x2]");
+            else
+                emit("str x0, [x2]");
+        }
+
+        current_type = targetType;
     } else {
         throw std::runtime_error("Invalid assignment target.");
     }

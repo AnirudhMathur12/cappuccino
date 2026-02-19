@@ -65,6 +65,10 @@ void DebugVisitor::visitFunctionCallExpr(const FunctionCallExpr *expr) {
     indent_level -= 8;
 }
 
+void DebugVisitor::visitArrayAccessExpr(const ArrayAccessExpr *expr) {}
+
+void DebugVisitor::visitArrayLiteralExpr(const ArrayLiteralExpr *expr) {}
+
 // Statements
 
 void DebugVisitor::visitExprStmt(const ExprStmt *stmt) {
