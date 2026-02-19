@@ -4,11 +4,6 @@
 #include <stdexcept>
 #include <string>
 
-class UnknownTypeError : public std::runtime_error {
-  public:
-    explicit UnknownTypeError(const std::string &message) : std::runtime_error(message) {}
-};
-
 enum class TypeKind {
     PRIMITIVE,
     VOID,

@@ -1,4 +1,5 @@
 #include "Type.h"
+#include "Errors.h"
 #include <string>
 
 std::string kind_to_string(TypeKind tk) {
@@ -72,7 +73,7 @@ Type TypeSystem::from_string(const std::string &typeName) {
     if (typeName == "string") return StringLiteral;
     if (typeName == "void") return Void;
 
-    throw UnknownTypeError("Unknown type '" + typeName + "'");
+    throw TypeError("Unknown type '" + typeName + "'");
     // return Int64;
 }
 

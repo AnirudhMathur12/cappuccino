@@ -6,13 +6,9 @@
 #include "Token.h"
 #include <stdexcept>
 
-class ParseError : public std::runtime_error {
+class ParserPanic : public std::runtime_error {
   public:
-    const Token token;
-    ParseError(const Token &tok, const std::string &msg);
-
-  private:
-    static std::string format_message(const Token &tok, const std::string msg);
+    ParserPanic() : std::runtime_error("panic") {}
 };
 
 class Parser {
@@ -24,6 +20,9 @@ class Parser {
     SymbolTable symbolTable;
 
   private:
+    void error(const Token &tok, const std::string &msg);
+    void synchronize();
+
     const std::vector<Token> &tokens;
     size_t pos = 0;
 

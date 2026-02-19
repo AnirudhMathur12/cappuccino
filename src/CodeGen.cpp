@@ -1,5 +1,6 @@
 #include "CodeGen.h"
 #include "AbstractSyntaxTree.h"
+#include "Errors.h"
 #include "Token.h"
 #include "Type.h"
 #include "capp_stdlib.h"
@@ -33,7 +34,7 @@ void CodeGen::visitArrayAccessExpr(const ArrayAccessExpr *expr) {
     genExpr(expr->idx.get());
 
     auto *ident = dynamic_cast<const IdentifierExpr *>(expr->array.get());
-    if (!ident) throw std::runtime_error("Only direct array identifiers are supported in MVP.");
+    if (!ident) throw SemanticError("Only direct array identifiers are supported in MVP.");
 
     Type arrayType = ident->type;
     Type elementType = *arrayType.baseType;
@@ -88,7 +89,7 @@ void CodeGen::visitArrayAccessExpr(const ArrayAccessExpr *expr) {
 }
 
 void CodeGen::visitArrayLiteralExpr(const ArrayLiteralExpr *expr) {
-    throw std::runtime_error("Array literals are currently only supported in variable declarations.");
+    throw SemanticError("Array literals are currently only supported in variable declarations.");
 }
 
 void CodeGen::generate() {
@@ -153,10 +154,10 @@ void CodeGen::visitVariableDeclStmt(const VariableDeclStmt *stmt) {
             Type varType = stmt->type;
 
             if (varType.kind != TypeKind::ARRAY) {
-                throw std::runtime_error("Cannot assign an array literal to a non-array type.");
+                throw SemanticError("Cannot assign an array literal to a non-array type.");
             }
             if (arrayLit->elements.size() > varType.array_length) {
-                throw std::runtime_error("Too many initializers for array bounds.");
+                throw SemanticError("Too many initializers for array bounds.");
             }
 
             Type elementType = *varType.baseType;
@@ -488,7 +489,7 @@ void CodeGen::visitUnaryExpr(const UnaryExpr *expr) {
         break;
     case TokenType::OPERATOR_ASTERISK: {
         if (current_type.kind != TypeKind::POINTER) {
-            throw std::runtime_error("Semantic Error: Cannot dereference a non-pointer type.");
+            throw SemanticError("Semantic Error: Cannot dereference a non-pointer type.");
         }
         current_type = *current_type.baseType;
 
@@ -520,7 +521,7 @@ void CodeGen::visitUnaryExpr(const UnaryExpr *expr) {
     case TokenType::OPERATOR_AMPERSAND: {
         auto *ident = dynamic_cast<IdentifierExpr *>(expr->right.get());
         if (!ident) {
-            throw std::runtime_error("Semantic Error: '&' operator requires a variable identifier.");
+            throw SemanticError("Semantic Error: '&' operator requires a variable identifier.");
         }
 
         emit("sub x0, x29, #" + std::to_string(ident->offset));
@@ -528,7 +529,7 @@ void CodeGen::visitUnaryExpr(const UnaryExpr *expr) {
         current_type = TypeSystem::createPointer(ident->type);
         break;
     }
-    default: throw std::runtime_error("Unknown unary operator");
+    default: throw SemanticError("Unknown unary operator");
     }
 }
 
@@ -789,14 +790,14 @@ void CodeGen::visitAssignment(const BinaryExpr *expr) {
     //  Pointer Dereference Assignment (e.g., *ptr = 5)
     else if (auto *unary = dynamic_cast<const UnaryExpr *>(expr->left.get())) {
         if (unary->op.type != TokenType::OPERATOR_ASTERISK) {
-            throw std::runtime_error("Invalid assignment target. Expected variable or pointer dereference.");
+            throw SemanticError("Invalid assignment target. Expected variable or pointer dereference.");
         }
 
         // Evaluate the Pointer (LHS) to get the target memory address
         genExpr(unary->right.get());
 
         if (current_type.kind != TypeKind::POINTER) {
-            throw std::runtime_error("Semantic Error: Assigning to a non-pointer dereference.");
+            throw SemanticError("Semantic Error: Assigning to a non-pointer dereference.");
         }
 
         Type targetType = *current_type.baseType; // The type the pointer points to
@@ -920,7 +921,7 @@ void CodeGen::visitAssignment(const BinaryExpr *expr) {
 
         current_type = targetType;
     } else {
-        throw std::runtime_error("Invalid assignment target.");
+        throw SemanticError("Invalid assignment target.");
     }
 }
 

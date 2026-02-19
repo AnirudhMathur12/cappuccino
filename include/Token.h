@@ -11,14 +11,6 @@
 #include <string>
 #include <vector>
 
-class LexError : public std::runtime_error {
-  public:
-    LexError(int line, int col, uint32_t c);
-
-  private:
-    static std::string to_unicode(uint32_t c);
-};
-
 using FormattedData = std::variant<std::monostate, uint64_t, double, std::string>;
 
 enum class TokenType {

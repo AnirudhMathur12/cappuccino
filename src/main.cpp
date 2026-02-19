@@ -4,6 +4,7 @@
 #include "AbstractSyntaxTree.h"
 #include "CodeGen.h"
 #include "DebugVisitor.h"
+#include "Errors.h"
 #include "Parser.h"
 #include "Token.h"
 #include "utils.h"
@@ -70,6 +71,11 @@ int main(int argc, char *argv[]) {
     Tokenizer t(file_content.value());
     std::vector<Token> tokens = t.tokenize();
 
+    if (ErrorReporter::hasErrors()) {
+        ErrorReporter::printErrors();
+        return 1;
+    }
+
     if (show_tokens) {
         for (Token &token : tokens) {
             std::cout << token << std::endl;
@@ -81,6 +87,11 @@ int main(int argc, char *argv[]) {
     Parser p(tokens);
     Program prog = p.parse();
 
+    if (ErrorReporter::hasErrors()) {
+        ErrorReporter::printErrors();
+        return 1;
+    }
+
     if (show_ast) {
         DebugVisitor debugger;
         std::cout << "Program\n";
@@ -90,14 +101,22 @@ int main(int argc, char *argv[]) {
         if (stop_at_ast) return 0;
     }
 
-    std::ofstream asmFile("output.s");
-    if (!asmFile.is_open()) {
-        std::cerr << "Failed to write assembly file." << std::endl;
+    try {
+        std::ofstream asmFile("output.s");
+        if (!asmFile.is_open()) {
+            std::cerr << "Failed to write assembly file." << std::endl;
+            return 1;
+        }
+        CodeGen generator(prog, asmFile);
+        generator.generate();
+        asmFile.close();
+    } catch (const CompilerError &e) {
+        std::cerr << "\n" << e.what() << "\n";
+        return 1;
+    } catch (const std::exception &e) {
+        std::cerr << "\n\033[1;31m[Internal Compiler Bug]\033[0m: " << e.what() << "\n";
         return 1;
     }
-    CodeGen generator(prog, asmFile);
-    generator.generate();
-    asmFile.close();
 
     std::cout << "Assembling..." << std::endl;
     std::string as_cmd = "as -o output.o output.s";

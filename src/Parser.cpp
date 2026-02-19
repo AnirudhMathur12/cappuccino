@@ -1,5 +1,6 @@
 #include "Parser.h"
 #include "AbstractSyntaxTree.h"
+#include "Errors.h"
 #include "Token.h"
 #include "Type.h"
 #include <cstdint>
@@ -7,15 +8,6 @@
 #include <memory>
 #include <sstream>
 #include <vector>
-
-ParseError::ParseError(const Token &tok, const std::string &msg) : std::runtime_error(format_message(tok, msg)), token(tok) {}
-
-std::string ParseError::format_message(const Token &tok, const std::string msg) {
-    std::ostringstream oss;
-    oss << "[Line:" << tok.row << ", Column:" << tok.column << "] " << msg << std::endl;
-
-    return oss.str();
-}
 
 Parser::Parser(const std::vector<Token> &p_tokens) : tokens(p_tokens) {}
 
@@ -72,7 +64,7 @@ void Parser::consume(TokenType t, const char *msg) {
         return;
     }
 
-    throw ParseError(previous(), msg);
+    error(peek(), msg);
 }
 
 ExprPtr Parser::parsePrimary() {
@@ -102,7 +94,8 @@ ExprPtr Parser::parsePrimary() {
                 returnType = sym->type;
                 paramTypes = sym->param_types;
             } else {
-                throw ParseError(identifierName, "Implicit declaration of '" + identifierName.lexeme + "' is not allowed.");
+                // throw ParseError(identifierName, "Implicit declaration of '" + identifierName.lexeme + "' is not allowed.");
+                error(identifierName, "Implicit declaration of '" + identifierName.lexeme + "' is not allowed.");
             }
 
             return std::make_unique<FunctionCallExpr>(std::move(identifierName), std::move(args), returnType, paramTypes);
@@ -115,7 +108,8 @@ ExprPtr Parser::parsePrimary() {
 
             auto sym = symbolTable.lookup(identifierName.lexeme);
             if (!sym) {
-                throw ParseError(identifierName, "Undefined variable '" + identifierName.lexeme + "'.");
+                // throw ParseError(identifierName, "Undefined variable '" + identifierName.lexeme + "'.");
+                error(identifierName, "Undefined variable '" + identifierName.lexeme + "'.");
             }
 
             auto arrayIdent = std::make_unique<IdentifierExpr>(identifierName, sym->offset, sym->type);
@@ -124,7 +118,8 @@ ExprPtr Parser::parsePrimary() {
 
         auto sym = symbolTable.lookup(identifierName.lexeme);
         if (!sym) {
-            throw ParseError(identifierName, "Undefined variable '" + identifierName.lexeme + "'.");
+            // throw ParseError(identifierName, "Undefined variable '" + identifierName.lexeme + "'.");
+            error(identifierName, "Undefined variable '" + identifierName.lexeme + "'.");
         }
         return std::make_unique<IdentifierExpr>(identifierName, sym->offset, sym->type);
     }
@@ -148,7 +143,8 @@ ExprPtr Parser::parsePrimary() {
         return std::make_unique<ArrayLiteralExpr>(std::move(elements));
     }
 
-    throw ParseError(previous(), "Expected expression");
+    // throw ParseError(previous(), "Expected expression");
+    error(previous(), "Expected expression");
 }
 
 ExprPtr Parser::parseUnary() {
@@ -232,7 +228,8 @@ ExprPtr Parser::parseAssignment() {
             return std::make_unique<BinaryExpr>(equals, std::move(left), std::move(right));
         }
 
-        throw ParseError(previous(), "Invalid assignment target. Only variables or pointer dereferences are allowed.");
+        // throw ParseError(previous(), "Invalid assignment target. Only variables or pointer dereferences are allowed.");
+        error(previous(), "Invalid assignment target. Only variables or pointer dereferences are allowed.");
     }
 
     return left;
@@ -294,7 +291,12 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
     bool isPtr = false;
     Token identifierTypeToken = previous();
 
-    Type type = TypeSystem::from_string(identifierTypeToken.lexeme);
+    Type type = TypeSystem::Int64;
+    try {
+        type = TypeSystem::from_string(identifierTypeToken.lexeme);
+    } catch (const TypeError &e) {
+        ErrorReporter::report(e);
+    }
 
     if (match(TokenType::LEFT_SQUARE)) {
         consume(TokenType::LITERAL_INTEGER, "Expected array length. ");
@@ -329,11 +331,17 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
                 Token arg_type_tok = advance();
                 Token arg_name_tok = advance();
 
-                Type argType = TypeSystem::from_string(arg_type_tok.lexeme);
+                Type argType = TypeSystem::Int64;
+                try {
+                    argType = TypeSystem::from_string(arg_type_tok.lexeme);
+                } catch (const TypeError &e) {
+                    ErrorReporter::report(e);
+                }
                 paramTypes.push_back(argType);
 
                 if (!symbolTable.declare(arg_name_tok.lexeme, argType)) {
-                    throw ParseError(arg_name_tok, "Duplicate parameter name.");
+                    // throw ParseError(arg_name_tok, "Duplicate parameter name.");
+                    error(arg_name_tok, "Duplicate parameter name.");
                 }
 
                 auto sym = symbolTable.lookup(arg_name_tok.lexeme);
@@ -372,7 +380,8 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
     consume(TokenType::SEMICOLON, "Expected ';' after initialization.");
 
     if (!symbolTable.declare(identifierName.lexeme, type)) {
-        throw ParseError(identifierName, "Variable '" + identifierName.lexeme + "' already declared in this scope.");
+        // throw ParseError(identifierName, "Variable '" + identifierName.lexeme + "' already declared in this scope.");
+        error(identifierName, "Variable '" + identifierName.lexeme + "' already declared in this scope.");
     }
 
     auto sym = symbolTable.lookup(identifierName.lexeme);
@@ -470,10 +479,43 @@ Program Parser::parse() {
     register_intrinsics(symbolTable);
 
     while (!isAtEnd()) {
-        prog.statements.push_back(parseStatement());
+        try {
+            prog.statements.push_back(parseStatement());
+        } catch (const ParserPanic &) {
+            synchronize();
+        }
     }
 
     prog.stack_size = symbolTable.getMaxStackSize();
 
     return prog;
+}
+
+void Parser::error(const Token &tok, const std::string &msg) {
+    ErrorReporter::report(ParseError(tok, msg));
+    throw ParserPanic(); // Throwing internal panic to unwind the stack safely
+}
+
+void Parser::synchronize() {
+    advance(); // Consume the token that caused the error
+
+    while (!isAtEnd()) {
+        if (previous().type == TokenType::SEMICOLON) return;
+
+        switch (peek().type) {
+        case TokenType::KEYWORD_TYPE_INT64:
+        case TokenType::KEYWORD_TYPE_INT32:
+        case TokenType::KEYWORD_TYPE_INT16:
+        case TokenType::KEYWORD_TYPE_INT8:
+        case TokenType::KEYWORD_TYPE_FLOAT64:
+        case TokenType::KEYWORD_TYPE_FLOAT32:
+        case TokenType::KEYWORD_TYPE_VOID:
+        case TokenType::KEYWORD_IF:
+        case TokenType::KEYWORD_WHILE:
+        case TokenType::KEYWORD_FOR:
+        case TokenType::KEYWORD_RETURN: return; // We found a valid boundary to resume parsing!
+        default: break;
+        }
+        advance();
+    }
 }

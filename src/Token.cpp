@@ -3,6 +3,7 @@
 //
 
 #include "Token.h"
+#include "Errors.h"
 #include "utils.h"
 
 #include <cstdint>
@@ -10,16 +11,6 @@
 #include <type_traits>
 #include <unordered_map>
 #include <variant>
-
-LexError::LexError(int line, int col, uint32_t codepoint)
-    : std::runtime_error("Lexer error at " + std::to_string(line) + ":" + std::to_string(col) + ": unexpected character U+" +
-                         to_unicode(codepoint)) {}
-
-std::string LexError::to_unicode(uint32_t codepoint) {
-    std::ostringstream oss;
-    oss << std::uppercase << std::hex << std::setw(4) << std::setfill('0') << codepoint;
-    return oss.str();
-}
 
 Token::Token(const std::string &p_lexeme, int p_row, int p_col, TokenType p_type)
     : lexeme(p_lexeme), row(p_row), column(p_col), type(p_type) {
@@ -179,7 +170,8 @@ std::vector<Token> Tokenizer::tokenize() {
                 for (int i = 1; i < byte_count; i++)
                     advance();
 
-                throw LexError(line, column, codepoint);
+                // throw LexError(line, column, codepoint);
+                ErrorReporter::report(LexError(line, column, codepoint));
             }
         }
     }
