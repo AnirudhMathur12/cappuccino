@@ -82,6 +82,7 @@ set(SOURCES
     src/Type.cpp
     src/SymbolTable.cpp
     src/DebugVisitor.cpp
+    src/Errors.cpp
 )
 
 set(HEADERS
