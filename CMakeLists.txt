@@ -56,7 +56,7 @@ else()
 endif()
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR AND NOT MSVC_IDE)
-    message(FATAL_ERROR "In-source builds are not allowed. Please create a separate build directory.")
+    message(FATAL_ERROR "In-source builds are not allowed.\nPlease create a separate build directory.")
 endif()
 
 set(CMAKE_CXX_STANDARD 20)
@@ -64,11 +64,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE ON)
+    set(CMAKE_BUILD_TYPE "Release")
 endif()
-
-set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wall -Wextra")
-set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -82,6 +79,7 @@ set(SOURCES
     src/Type.cpp
     src/SymbolTable.cpp
     src/DebugVisitor.cpp
+    src/Errors.cpp
 )
 
 set(HEADERS
