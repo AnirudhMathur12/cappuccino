@@ -74,6 +74,14 @@ One benchmark currently available is computing all prime numbers up to 10 millio
 
 From the perspective of a compiled language, it's not that performant. The stack machine overhead is pretty apparent, but hey, it's at least faster than Python, not that that's a big achievement.
 
+## Upcoming Additions/Improvements
+1. Actual, functioning strings (fat pointers) [high priority]
+2. Intermediate IR and register allocator
+3. Complete the AAPCS64 Calling Convention
+4. Structs and Memory Alignment
+5. Better error diagnostics
+
+
 ## FAQs
 ### Why is it called Cappuccino?
 Because I like how "Java" sounds. And I like coffee.
