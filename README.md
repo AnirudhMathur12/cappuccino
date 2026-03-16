@@ -80,6 +80,7 @@ From the perspective of a compiled language, it's not that performant. The stack
 3. Complete the AAPCS64 Calling Convention
 4. Structs and Memory Alignment
 5. Better error diagnostics
+6. Multifile support
 
 
 ## FAQs
