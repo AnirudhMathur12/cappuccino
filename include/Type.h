@@ -1,17 +1,11 @@
 #ifndef CAPPUCCINO_TYPE_H
 #define CAPPUCCINO_TYPE_H
 
-#include <stdexcept>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
-enum class TypeKind {
-    PRIMITIVE,
-    VOID,
-    POINTER,
-    ARRAY,
-    STRUCT, // TODO: Implement a struct eventually...
-    SLICE
-};
+enum class TypeKind { PRIMITIVE, VOID, POINTER, ARRAY, CLASS, SLICE };
 
 std::string kind_to_string(TypeKind tk);
 
@@ -30,6 +24,24 @@ struct Type {
     bool operator==(const Type &other) const;
     bool operator!=(const Type &other) const;
 };
+
+struct FieldInfo {
+    Type type;
+    size_t offset;
+};
+
+struct MethodInfo {
+    Type return_type;
+    std::vector<Type> param_types;
+};
+
+struct ClassTypeInfo {
+    std::string name;
+    size_t total_size_bytes;
+    std::unordered_map<std::string, FieldInfo> fields;
+};
+
+extern std::unordered_map<std::string, ClassTypeInfo> class_registry;
 
 class TypeSystem {
   public:

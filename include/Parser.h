@@ -55,6 +55,7 @@ class Parser {
     StmtPtr parseFor();
     StmtPtr parseFunction();
     StmtPtr parseReturnStmt();
+    StmtPtr parseClassDecl();
 };
 
 #endif

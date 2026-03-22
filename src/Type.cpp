@@ -1,16 +1,19 @@
 #include "Type.h"
 #include "Errors.h"
 #include <string>
+#include <unordered_map>
+
+std::unordered_map<std::string, ClassTypeInfo> class_registry;
 
 std::string kind_to_string(TypeKind tk) {
     switch (tk) {
-    case TypeKind::PRIMITIVE: return "PRIMITIVE"; break;
-    case TypeKind::ARRAY: return "ARRAY"; break;
-    case TypeKind::POINTER: return "POINTER"; break;
-    case TypeKind::STRUCT: return "STRUCT"; break;
-    case TypeKind::VOID: return "VOID"; break;
-    case TypeKind::SLICE: return "SLICE"; break;
-    default: return "NO TYPE"; break;
+    case TypeKind::PRIMITIVE: return "PRIMITIVE";
+    case TypeKind::ARRAY: return "ARRAY";
+    case TypeKind::POINTER: return "POINTER";
+    case TypeKind::CLASS: return "CLASS";
+    case TypeKind::VOID: return "VOID";
+    case TypeKind::SLICE: return "SLICE";
+    default: return "NO TYPE";
     }
 }
 
