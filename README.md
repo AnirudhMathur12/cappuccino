@@ -14,7 +14,7 @@ Cappuccino is a compiler for a small statically-typed, C-like language of the sa
 The language supports sized integer and float types, arrays, pointers, functions, and standard control flow. See [syntax.md](syntax.md) for the full language reference.
 
 > **Note**
-> This compiler targets ARM64 assembly directly and only works on Apple Silicon (M-series) Macs. Support for other AArch64 devices is untested.
+> This compiler targets ARM64 assembly directly and only works on Apple Silicon Macs. Support for other AArch64 devices is untested.
 
 ## Building
 
