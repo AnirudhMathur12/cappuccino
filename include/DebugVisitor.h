@@ -20,6 +20,7 @@ class DebugVisitor : public Visitor {
     void visitFunctionCallExpr(const FunctionCallExpr *expr) override;
     void visitArrayAccessExpr(const ArrayAccessExpr *expr) override;
     void visitArrayLiteralExpr(const ArrayLiteralExpr *expr) override;
+    void visitPropertyAccessExpr(const PropertyAccessExpr *expr) override;
 
     // Statements
     void visitExprStmt(const ExprStmt *stmt) override;

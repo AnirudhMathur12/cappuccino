@@ -1,13 +1,15 @@
 #ifndef CAPPUCCINO_VISITOR_H
 #define CAPPUCCINO_VISITOR_H
 
-#include "AbstractSyntaxTree.h"
 struct LiteralExpr;
 struct IdentifierExpr;
 struct UnaryExpr;
 struct BinaryExpr;
 struct GroupingExpr;
 struct FunctionCallExpr;
+struct ArrayAccessExpr;
+struct ArrayLiteralExpr;
+struct PropertyAccessExpr;
 
 struct ExprStmt;
 struct VariableDeclStmt;
@@ -18,6 +20,7 @@ struct ForStmt;
 struct ReturnStmt;
 struct FunctionParameterStmt;
 struct FunctionDeclStmt;
+struct ClassDeclStmt;
 
 class Visitor {
   public:
@@ -32,6 +35,7 @@ class Visitor {
     virtual void visitFunctionCallExpr(const FunctionCallExpr *expr) = 0;
     virtual void visitArrayAccessExpr(const ArrayAccessExpr *expr) = 0;
     virtual void visitArrayLiteralExpr(const ArrayLiteralExpr *expr) = 0;
+    virtual void visitPropertyAccessExpr(const PropertyAccessExpr *expr) = 0;
 
     // Statements
     virtual void visitExprStmt(const ExprStmt *stmt) = 0;

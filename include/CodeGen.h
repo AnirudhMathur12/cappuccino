@@ -23,6 +23,7 @@ class CodeGen : public Visitor {
     void visitFunctionCallExpr(const FunctionCallExpr *expr) override;
     void visitArrayAccessExpr(const ArrayAccessExpr *expr) override;
     void visitArrayLiteralExpr(const ArrayLiteralExpr *expr) override;
+    void visitPropertyAccessExpr(const PropertyAccessExpr *expr) override;
 
     void visitExprStmt(const ExprStmt *stmt) override;
     void visitVariableDeclStmt(const VariableDeclStmt *stmt) override;

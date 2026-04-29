@@ -1,5 +1,5 @@
-#include "CodeGen.h"
 #include "AbstractSyntaxTree.h"
+#include "CodeGen.h"
 #include "Errors.h"
 #include "Token.h"
 #include "Type.h"
@@ -90,6 +90,45 @@ void CodeGen::visitArrayAccessExpr(const ArrayAccessExpr *expr) {
 
 void CodeGen::visitArrayLiteralExpr(const ArrayLiteralExpr *expr) {
     throw SemanticError("Array literals are currently only supported in variable declarations.");
+}
+
+void CodeGen::visitPropertyAccessExpr(const PropertyAccessExpr *expr) {
+    auto *ident = dynamic_cast<const IdentifierExpr *>(expr->object.get());
+    if (!ident) {
+        throw SemanticError("Only direct object identifiers are supported for field access.");
+    }
+
+    // Base address of object
+    emit("sub x2, x29, #" + std::to_string(ident->offset));
+
+    if (expr->field_offset != 0) {
+        emit("add x2, x2, #" + std::to_string(expr->field_offset));
+    }
+
+    current_type = expr->type;
+
+    if (current_type.is_float) {
+        if (current_type.size_bytes == 4)
+            emit("ldr s0, [x2]");
+        else
+            emit("ldr d0, [x2]");
+    } else {
+        if (current_type.size_bytes == 1) {
+            if (current_type.is_signed)
+                emit("ldrsb x0, [x2]");
+            else
+                emit("ldrb w0, [x2]");
+        } else if (current_type.size_bytes == 2) {
+            if (current_type.is_signed)
+                emit("ldrsh x0, [x2]");
+            else
+                emit("ldrh w0, [x2]");
+        } else if (current_type.size_bytes == 4) {
+            emit("ldr w0, [x2]");
+        } else {
+            emit("ldr x0, [x2]");
+        }
+    }
 }
 
 void CodeGen::generate() {
@@ -920,6 +959,65 @@ void CodeGen::visitAssignment(const BinaryExpr *expr) {
         }
 
         current_type = targetType;
+    } else if (auto *prop = dynamic_cast<const PropertyAccessExpr *>(expr->left.get())) {
+        genExpr(expr->right.get());
+
+        if (current_type.is_float)
+            emit("str d0, [sp, #-16]!");
+        else
+            emit("str x0, [sp, #-16]!");
+
+        auto *ident = dynamic_cast<const IdentifierExpr *>(prop->object.get());
+        if (!ident) {
+            throw SemanticError("Only direct object identifiers are supported for field assignment.");
+        }
+
+        emit("sub x2, x29, #" + std::to_string(ident->offset));
+        if (prop->field_offset != 0) {
+            emit("add x2, x2, #" + std::to_string(prop->field_offset));
+        }
+
+        if (current_type.is_float)
+            emit("ldr d0, [sp], #16");
+        else
+            emit("ldr x0, [sp], #16");
+
+        Type targetType = prop->type;
+
+        if (targetType.is_float) {
+            if (!current_type.is_float) {
+                emit("scvtf d0, x0");
+                current_type = (current_type.size_bytes == 4) ? TypeSystem::Float32 : TypeSystem::Float64;
+            }
+
+            if (targetType.size_bytes == 4 && current_type.size_bytes == 8) {
+                emit("fcvt s0, d0");
+            } else if (targetType.size_bytes == 8 && current_type.size_bytes == 4) {
+                emit("fcvt d0, s0");
+            }
+        } else {
+            if (current_type.is_float) {
+                emit("fcvtzs x0, d0");
+            }
+        }
+
+        if (targetType.is_float) {
+            if (targetType.size_bytes == 4)
+                emit("str s0, [x2]");
+            else
+                emit("str d0, [x2]");
+        } else {
+            if (targetType.size_bytes == 1)
+                emit("strb w0, [x2]");
+            else if (targetType.size_bytes == 2)
+                emit("strh w0, [x2]");
+            else if (targetType.size_bytes == 4)
+                emit("str w0, [x2]");
+            else
+                emit("str x0, [x2]");
+        }
+
+        current_type = targetType;
     } else {
         throw SemanticError("Invalid assignment target.");
     }
@@ -1005,5 +1103,7 @@ void CodeGen::visitFunctionCallExpr(const FunctionCallExpr *expr) {
 }
 
 void CodeGen::visitClassDeclStmt(const ClassDeclStmt *stmt) {
-    // do nothing
+    for (const auto &method : stmt->methods) {
+        genStmt(method.get());
+    }
 }

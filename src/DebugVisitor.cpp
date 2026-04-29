@@ -1,5 +1,5 @@
-#include "DebugVisitor.h"
 #include "AbstractSyntaxTree.h"
+#include "DebugVisitor.h"
 #include "Type.h"
 #include <iostream>
 #include <variant>
@@ -89,6 +89,14 @@ void DebugVisitor::visitArrayLiteralExpr(const ArrayLiteralExpr *expr) {
         expr->elements[i]->accept(*this);
         indent_level -= 2;
     }
+    indent_level -= 2;
+}
+
+void DebugVisitor::visitPropertyAccessExpr(const PropertyAccessExpr *expr) {
+    std::cout << pad() << "PropertyAccess(" << expr->property_name.lexeme << ")"
+              << " [offset=" << expr->field_offset << ", type=" << expr->type.name << "]\n";
+    indent_level += 2;
+    expr->object->accept(*this);
     indent_level -= 2;
 }
 
@@ -213,7 +221,6 @@ void DebugVisitor::visitFunctionDeclStmt(const FunctionDeclStmt *stmt) {
         indent_level -= 4;
     }
 }
-
 
 void DebugVisitor::visitClassDeclStmt(const ClassDeclStmt *stmt) {
     // do nothing

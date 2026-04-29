@@ -82,6 +82,8 @@ void ArrayAccessExpr::accept(Visitor &visitor) const { visitor.visitArrayAccessE
 
 void ArrayLiteralExpr::accept(Visitor &visitor) const { visitor.visitArrayLiteralExpr(this); }
 
+void PropertyAccessExpr::accept(Visitor &visitor) const { visitor.visitPropertyAccessExpr(this); }
+
 void ExprStmt::accept(Visitor &visitor) const { visitor.visitExprStmt(this); }
 
 void VariableDeclStmt::accept(Visitor &visitor) const { visitor.visitVariableDeclStmt(this); }

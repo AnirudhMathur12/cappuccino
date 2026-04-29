@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <iostream>
 #include <memory>
+#include <utility>
 #include <vector>
 
 Parser::Parser(const std::vector<Token> &p_tokens) : tokens(p_tokens) {}
@@ -75,8 +76,8 @@ ExprPtr Parser::parsePrimary() {
 
     if (match(TokenType::IDENTIFIER)) {
         Token identifierName = previous();
-        if (match(TokenType::LEFT_PAREN)) {
 
+        if (match(TokenType::LEFT_PAREN)) {
             std::vector<ExprPtr> args;
             if (!check(TokenType::RIGHT_PAREN)) {
                 do {
@@ -94,7 +95,6 @@ ExprPtr Parser::parsePrimary() {
                 returnType = sym->type;
                 paramTypes = sym->param_types;
             } else {
-                // throw ParseError(identifierName, "Implicit declaration of '" + identifierName.lexeme + "' is not allowed.");
                 error(identifierName, "Implicit declaration of '" + identifierName.lexeme + "' is not allowed.");
             }
 
@@ -108,7 +108,6 @@ ExprPtr Parser::parsePrimary() {
 
             auto sym = symbolTable.lookup(identifierName.lexeme);
             if (!sym) {
-                // throw ParseError(identifierName, "Undefined variable '" + identifierName.lexeme + "'.");
                 error(identifierName, "Undefined variable '" + identifierName.lexeme + "'.");
             }
 
@@ -116,9 +115,63 @@ ExprPtr Parser::parsePrimary() {
             return std::make_unique<ArrayAccessExpr>(std::move(arrayIdent), std::move(index), bracket);
         }
 
+        if (match(TokenType::PUNCTUATION_DOT)) {
+            auto sym = symbolTable.lookup(identifierName.lexeme);
+            if (!sym) {
+                error(identifierName, "Undefined variable '" + identifierName.lexeme + "'.");
+            }
+            if (sym->type.kind != TypeKind::CLASS) {
+                error(identifierName, "Member access requires a class type.");
+            }
+
+            consume(TokenType::IDENTIFIER, "Expected member name after '.'.");
+            Token memberName = previous();
+
+            auto classIt = class_registry.find(sym->type.name);
+            if (classIt == class_registry.end()) {
+                error(identifierName, "Unknown class '" + sym->type.name + "'.");
+            }
+
+            const ClassTypeInfo &classInfo = classIt->second;
+
+            if (match(TokenType::LEFT_PAREN)) {
+                std::vector<ExprPtr> args;
+
+                Token ampToken("&", identifierName.row, identifierName.column, TokenType::OPERATOR_AMPERSAND);
+                auto thisIdent = std::make_unique<IdentifierExpr>(identifierName, sym->offset, sym->type);
+                args.push_back(std::make_unique<UnaryExpr>(ampToken, std::move(thisIdent)));
+
+                if (!check(TokenType::RIGHT_PAREN)) {
+                    do {
+                        args.push_back(parseExpression());
+                    } while (match(TokenType::COMMA));
+                }
+
+                consume(TokenType::RIGHT_PAREN, "Expected ')' after arguments.");
+
+                std::string mangledName = mangle_method(classInfo.name, memberName.lexeme);
+                auto funcSym = symbolTable.lookup(mangledName);
+                if (!funcSym || !funcSym->is_function) {
+                    error(memberName, "Unknown method '" + memberName.lexeme + "'.");
+                }
+
+                Token mangledToken = memberName;
+                mangledToken.lexeme = mangledName;
+
+                return std::make_unique<FunctionCallExpr>(std::move(mangledToken), std::move(args), funcSym->type, funcSym->param_types);
+            }
+
+            auto fieldIt = classInfo.fields.find(memberName.lexeme);
+            if (fieldIt == classInfo.fields.end()) {
+                error(memberName, "Unknown field '" + memberName.lexeme + "'.");
+            }
+
+            auto objIdent = std::make_unique<IdentifierExpr>(identifierName, sym->offset, sym->type);
+            return std::make_unique<PropertyAccessExpr>(std::move(objIdent), memberName, fieldIt->second.type, fieldIt->second.offset);
+        }
+
         auto sym = symbolTable.lookup(identifierName.lexeme);
         if (!sym) {
-            // throw ParseError(identifierName, "Undefined variable '" + identifierName.lexeme + "'.");
             error(identifierName, "Undefined variable '" + identifierName.lexeme + "'.");
         }
         return std::make_unique<IdentifierExpr>(identifierName, sym->offset, sym->type);
@@ -225,6 +278,10 @@ ExprPtr Parser::parseAssignment() {
         }
 
         if (auto *arrAccess = dynamic_cast<ArrayAccessExpr *>(left.get())) {
+            return std::make_unique<BinaryExpr>(equals, std::move(left), std::move(right));
+        }
+
+        if (auto *propAccess = dynamic_cast<PropertyAccessExpr *>(left.get())) {
             return std::make_unique<BinaryExpr>(equals, std::move(left), std::move(right));
         }
 
