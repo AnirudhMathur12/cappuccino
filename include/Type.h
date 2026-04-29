@@ -62,6 +62,8 @@ class TypeSystem {
     static const Type Void;
     // Strint Literals
     static const Type StringLiteral;
+    // Class
+    static const Type Class;
 
     static Type from_string(const std::string &typeName);
     static Type createArray(const Type &base, int length);

@@ -99,3 +99,5 @@ void ReturnStmt::accept(Visitor &visitor) const { visitor.visitReturnStmt(this);
 void FunctionParameterStmt::accept(Visitor &visitor) const { visitor.visitFunctionParameterStmt(this); }
 
 void FunctionDeclStmt::accept(Visitor &visitor) const { visitor.visitFunctionDeclStmt(this); }
+
+void ClassDeclStmt::accept(Visitor &visitor) const { visitor.visitClassDeclStmt(this); }

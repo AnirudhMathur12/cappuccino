@@ -39,3 +39,7 @@ std::pair<uint32_t, int> decode_utf8(const std::string &src, size_t pos) {
 
     return {c, 1}; // Invalid byte, treat as single
 }
+
+std::string mangle_method(const std::string &class_name, const std::string &method_name) {
+    return "ZN" + std::to_string(class_name.length()) + class_name + std::to_string(method_name.length()) + method_name + "E";
+}

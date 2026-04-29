@@ -43,6 +43,7 @@ class Visitor {
     virtual void visitReturnStmt(const ReturnStmt *stmt) = 0;
     virtual void visitFunctionParameterStmt(const FunctionParameterStmt *stmt) = 0;
     virtual void visitFunctionDeclStmt(const FunctionDeclStmt *stmt) = 0;
+    virtual void visitClassDeclStmt(const ClassDeclStmt *stmt) = 0;
 };
 
 #endif // CAPPUCCINO_VISITOR_H

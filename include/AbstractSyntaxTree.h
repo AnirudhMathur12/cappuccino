@@ -91,6 +91,17 @@ struct ArrayLiteralExpr : Expr {
     void accept(Visitor &visitor) const override;
 };
 
+struct PropertyAccessExpr : Expr {
+    ExprPtr object;
+    Token property_name;
+    Type type;
+    int field_offset;
+
+    PropertyAccessExpr(ExprPtr obj, Token prop, Type t, int offset)
+        : object(std::move(obj)), property_name(std::move(prop)), type(std::move(t)), field_offset(offset) {}
+    void accept(Visitor &visitor) const override;
+};
+
 struct ExprStmt : Stmt {
     ExprPtr expr;
 
@@ -169,6 +180,14 @@ struct FunctionDeclStmt : Stmt {
     int stack_size;
 
     FunctionDeclStmt(Type rt, Token name, std::vector<StmtPtr> p, StmtPtr b, int stack);
+    void accept(Visitor &visitor) const override;
+};
+
+struct ClassDeclStmt : Stmt {
+    Token name_token;
+    std::vector<StmtPtr> methods;
+
+    ClassDeclStmt(Token name, std::vector<StmtPtr> m) : name_token(std::move(name)), methods(std::move(m)) {}
     void accept(Visitor &visitor) const override;
 };
 

@@ -76,6 +76,17 @@ Type TypeSystem::from_string(const std::string &typeName) {
     if (typeName == "string") return StringLiteral;
     if (typeName == "void") return Void;
 
+    auto it = class_registry.find(typeName);
+    if (it != class_registry.end()) {
+        return Type {
+            .name = typeName,
+            .kind = TypeKind::CLASS,
+            .size_bytes = static_cast<int>(it->second.total_size_bytes),
+            .is_signed = false,
+            .is_float = false
+        };
+    }
+
     throw TypeError("Unknown type '" + typeName + "'");
     // return Int64;
 }
@@ -93,6 +104,8 @@ Type TypeSystem::createArray(const Type &base, int length) {
 bool Type::operator==(const Type &other) const {
     if (kind != other.kind) return false;
     if (kind == TypeKind::PRIMITIVE) return name == other.name;
+    if (kind == TypeKind::VOID) return true;
+    if (kind == TypeKind::CLASS) return name == other.name;
     if (kind == TypeKind::ARRAY) return (array_length == other.array_length) && (*baseType == *other.baseType);
     return *baseType == *other.baseType;
 }

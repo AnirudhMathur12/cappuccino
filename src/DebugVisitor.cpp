@@ -213,3 +213,8 @@ void DebugVisitor::visitFunctionDeclStmt(const FunctionDeclStmt *stmt) {
         indent_level -= 4;
     }
 }
+
+
+void DebugVisitor::visitClassDeclStmt(const ClassDeclStmt *stmt) {
+    // do nothing
+}

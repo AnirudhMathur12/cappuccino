@@ -1003,3 +1003,7 @@ void CodeGen::visitFunctionCallExpr(const FunctionCallExpr *expr) {
         }
     }
 }
+
+void CodeGen::visitClassDeclStmt(const ClassDeclStmt *stmt) {
+    // do nothing
+}

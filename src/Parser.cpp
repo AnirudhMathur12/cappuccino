@@ -1,12 +1,12 @@
-#include "Parser.h"
 #include "AbstractSyntaxTree.h"
 #include "Errors.h"
+#include "Parser.h"
 #include "Token.h"
 #include "Type.h"
+#include "utils.h"
 #include <cstdint>
 #include <iostream>
 #include <memory>
-#include <sstream>
 #include <vector>
 
 Parser::Parser(const std::vector<Token> &p_tokens) : tokens(p_tokens) {}
@@ -270,8 +270,20 @@ StmtPtr Parser::parseStatement() {
         return parseVarOrFunctionDecl();
     }
 
+    if (check(TokenType::IDENTIFIER)) {
+        auto it = class_registry.find(peek().lexeme);
+        if (it != class_registry.end()) {
+            advance();
+            return parseVarOrFunctionDecl();
+        }
+    }
+
     if (match(TokenType::KEYWORD_RETURN)) {
         return parseReturnStmt();
+    }
+
+    if (match(TokenType::KEYWORD_CLASS)) {
+        return parseClassDecl();
     }
 
     return parseExpressionStatement();
@@ -448,6 +460,9 @@ StmtPtr Parser::parseFor() {
             match(TokenType::KEYWORD_TYPE_UINT8) || match(TokenType::KEYWORD_TYPE_UINT16) || match(TokenType::KEYWORD_TYPE_UINT32) ||
             match(TokenType::KEYWORD_TYPE_UINT64)) {
             init = parseVarOrFunctionDecl();
+        } else if (check(TokenType::IDENTIFIER) && class_registry.count(peek().lexeme)) {
+            advance();
+            init = parseVarOrFunctionDecl();
         } else {
             init = parseExpressionStatement();
         }
@@ -468,6 +483,107 @@ StmtPtr Parser::parseFor() {
     symbolTable.exit_scope();
 
     return std::make_unique<ForStmt>(std::move(init), std::move(cond), std::move(post), std::move(body));
+}
+
+StmtPtr Parser::parseClassDecl() {
+    Token className = advance();
+    consume(TokenType::LEFT_CURLY, "Expected '{' before class body.");
+
+    ClassTypeInfo classInfo;
+    classInfo.name = className.lexeme;
+    size_t current_offset = 0;
+
+    std::vector<StmtPtr> methods;
+
+    while (!check(TokenType::RIGHT_CURLY) && !isAtEnd()) {
+        Type memberType = TypeSystem::from_string(peek().lexeme);
+        advance(); // consume type
+
+        Token memberName = previous(); // wait, you need consume(IDENTIFIER)
+        consume(TokenType::IDENTIFIER, "Expected member name.");
+        memberName = previous();
+
+        if (match(TokenType::LEFT_PAREN)) {
+            symbolTable.reset_local_offset();
+
+            std::vector<StmtPtr> args;
+            std::vector<Type> paramTypes;
+
+            symbolTable.enter_scope();
+
+            Type thisType = TypeSystem::createPointer(Type{.name = classInfo.name, .kind = TypeKind::CLASS, .size_bytes = 0});
+
+            if (!symbolTable.declare("this", thisType)) {
+                error(memberName, "Duplicate parameter name 'this'.");
+            }
+
+            auto thisSym = symbolTable.lookup("this");
+
+            Token thisTypeToken("uint64", memberName.row, memberName.column, TokenType::KEYWORD_TYPE_UINT64);
+            args.push_back(std::make_unique<FunctionParameterStmt>(thisTypeToken, "this", thisSym->offset));
+            paramTypes.push_back(thisType);
+
+            if (!check(TokenType::RIGHT_PAREN)) {
+                do {
+                    Token arg_type_tok = advance();
+                    Token arg_name_tok = advance();
+
+                    Type argType = TypeSystem::Int64;
+                    try {
+                        argType = TypeSystem::from_string(arg_type_tok.lexeme);
+                    } catch (const TypeError &e) {
+                        ErrorReporter::report(e);
+                    }
+
+                    if (!symbolTable.declare(arg_name_tok.lexeme, argType)) {
+                        error(arg_name_tok, "Duplicate parameter name.");
+                    }
+
+                    auto sym = symbolTable.lookup(arg_name_tok.lexeme);
+
+                    args.push_back(std::make_unique<FunctionParameterStmt>(arg_type_tok, arg_name_tok.lexeme, sym->offset));
+                    paramTypes.push_back(argType);
+                } while (match(TokenType::COMMA));
+            }
+
+            // 3) Mangle name and register function
+            std::string mangled_name = mangle_method(classInfo.name, memberName.lexeme);
+            symbolTable.declareFunction(mangled_name, memberType, paramTypes);
+
+            consume(TokenType::RIGHT_PAREN, "Expected ')' after method parameters.");
+            consume(TokenType::LEFT_CURLY, "Expected '{' before method body.");
+
+            StmtPtr block_ptr = parseBlock();
+
+            int function_stack_size = symbolTable.getMaxStackSize();
+
+            symbolTable.exit_scope();
+
+            Token mangledToken = memberName;
+            mangledToken.lexeme = mangled_name;
+
+            methods.push_back(std::make_unique<FunctionDeclStmt>(std::move(memberType), std::move(mangledToken), std::move(args),
+                                                                 std::move(block_ptr), function_stack_size));
+        } else {
+            // It's a field!
+            consume(TokenType::SEMICOLON, "Expected ';' after field declaration.");
+
+            // Align memory offset
+            int alignment = memberType.size_bytes;
+            while (current_offset % alignment != 0)
+                current_offset++;
+
+            classInfo.fields[memberName.lexeme] = {memberType, current_offset};
+            current_offset += memberType.size_bytes;
+        }
+    }
+
+    classInfo.total_size_bytes = current_offset;
+    class_registry[classInfo.name] = classInfo; // Save to registry
+
+    consume(TokenType::RIGHT_CURLY, "Expected '}' after class body.");
+    consume(TokenType::SEMICOLON, "Expected ';' after '}'.");
+    return std::make_unique<ClassDeclStmt>(className, std::move(methods));
 }
 
 ExprPtr Parser::parseExpression() { return parseAssignment(); }

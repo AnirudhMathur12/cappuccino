@@ -33,6 +33,7 @@ class CodeGen : public Visitor {
     void visitReturnStmt(const ReturnStmt *stmt) override;
     void visitFunctionParameterStmt(const FunctionParameterStmt *stmt) override;
     void visitFunctionDeclStmt(const FunctionDeclStmt *stmt) override;
+    void visitClassDeclStmt(const ClassDeclStmt *stmt) override;
 
   private:
     const Program &prog;

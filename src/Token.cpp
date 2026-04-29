@@ -145,6 +145,7 @@ std::vector<Token> Tokenizer::tokenize() {
         case '/': tokens.push_back(makeToken(TokenType::OPERATOR_FORWARD_SLASH)); break;
         case ',': tokens.push_back(makeToken(TokenType::COMMA)); break;
         case '&': tokens.push_back(makeToken(TokenType::OPERATOR_AMPERSAND)); break;
+        case '.': tokens.push_back(makeToken(TokenType::PUNCTUATION_DOT)); break;
 
         case '=':
             tokens.push_back(makeToken((peek() == '=') ? (advance(), TokenType::OPERATOR_EQUALITY) : TokenType::OPERATOR_ASSIGNMENT));
