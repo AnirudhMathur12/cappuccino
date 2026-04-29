@@ -65,8 +65,11 @@ inline std::string token_type_to_string(TokenType type) {
     case TokenType::KEYWORD_TYPE_FLOAT64: return "KEYWORD_TYPE_FLOAT64";
     case TokenType::KEYWORD_TYPE_FLOAT32: return "KEYWORD_TYPE_FLOAT32";
 
-    case TokenType::KEYWORD_TYPE_VOID:
-        return "KEYWORD_TYPE_VOID";
+    case TokenType::KEYWORD_TYPE_VOID: return "KEYWORD_TYPE_VOID";
+
+    case TokenType::KEYWORD_CLASS: return "KEYWORD_CLASS";
+    case TokenType::PUNCTUATION_DOT:
+        return "PUNCTUATION_DOT";
 
         // Operators
     case TokenType::OPERATOR_EQUALITY: return "OPERATOR_EQUALITY";
@@ -142,6 +145,7 @@ std::vector<Token> Tokenizer::tokenize() {
         case '/': tokens.push_back(makeToken(TokenType::OPERATOR_FORWARD_SLASH)); break;
         case ',': tokens.push_back(makeToken(TokenType::COMMA)); break;
         case '&': tokens.push_back(makeToken(TokenType::OPERATOR_AMPERSAND)); break;
+        case '.': tokens.push_back(makeToken(TokenType::PUNCTUATION_DOT)); break;
 
         case '=':
             tokens.push_back(makeToken((peek() == '=') ? (advance(), TokenType::OPERATOR_EQUALITY) : TokenType::OPERATOR_ASSIGNMENT));
@@ -224,6 +228,7 @@ std::unordered_map<std::string, TokenType> keywords = {{"if", TokenType::KEYWORD
                                                        {"for", TokenType::KEYWORD_FOR},
                                                        {"return", TokenType::KEYWORD_RETURN},
                                                        {"while", TokenType::KEYWORD_WHILE},
+
                                                        {"int64", TokenType::KEYWORD_TYPE_INT64},
                                                        {"int32", TokenType::KEYWORD_TYPE_INT32},
                                                        {"int16", TokenType::KEYWORD_TYPE_INT16},
@@ -236,7 +241,8 @@ std::unordered_map<std::string, TokenType> keywords = {{"if", TokenType::KEYWORD
 
                                                        {"float64", TokenType::KEYWORD_TYPE_FLOAT64},
                                                        {"float32", TokenType::KEYWORD_TYPE_FLOAT32},
-                                                       {"void", TokenType::KEYWORD_TYPE_VOID}};
+                                                       {"void", TokenType::KEYWORD_TYPE_VOID},
+                                                       {"class", TokenType::KEYWORD_CLASS}};
 
 Token Tokenizer::identifier() {
     while ((isalnum(peek()) || peek() == '_') && !isAtEnd())

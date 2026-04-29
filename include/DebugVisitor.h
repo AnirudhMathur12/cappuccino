@@ -20,6 +20,7 @@ class DebugVisitor : public Visitor {
     void visitFunctionCallExpr(const FunctionCallExpr *expr) override;
     void visitArrayAccessExpr(const ArrayAccessExpr *expr) override;
     void visitArrayLiteralExpr(const ArrayLiteralExpr *expr) override;
+    void visitPropertyAccessExpr(const PropertyAccessExpr *expr) override;
 
     // Statements
     void visitExprStmt(const ExprStmt *stmt) override;
@@ -31,6 +32,7 @@ class DebugVisitor : public Visitor {
     void visitReturnStmt(const ReturnStmt *stmt) override;
     void visitFunctionParameterStmt(const FunctionParameterStmt *stmt) override;
     void visitFunctionDeclStmt(const FunctionDeclStmt *stmt) override;
+    void visitClassDeclStmt(const ClassDeclStmt *stmt) override;
 
   private:
     int indent_level = 0;

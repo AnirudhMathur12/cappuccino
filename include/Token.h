@@ -50,6 +50,9 @@ enum class TokenType {
     KEYWORD_TYPE_FLOAT32,
     KEYWORD_TYPE_VOID,
 
+    KEYWORD_CLASS,
+    PUNCTUATION_DOT,
+
     // Operators
     OPERATOR_EQUALITY,
     OPERATOR_MINUS,
