@@ -2,8 +2,8 @@
 // Created by Anirudh Mathur on 12/11/25.
 //
 
-#include "Token.h"
 #include "Errors.h"
+#include "Token.h"
 #include "utils.h"
 
 #include <cstdint>
@@ -185,17 +185,14 @@ std::vector<Token> Tokenizer::tokenize() {
 }
 
 Token Tokenizer::string() {
-    while (!isAtEnd() && peek() != '"') {
-        if (peek() == '\n') {
-            line++;
-            column = 0;
-        }
-
-        if (isAtEnd()) {
-            // Unterminated string
-        }
-
+    while (!isAtEnd() && peek() != '"' && peek() != '\n')
         advance();
+
+    if (isAtEnd() || peek() == '\n') {
+        ErrorReporter::report(CompilerError("Lexer", line, column, "Unterminated stirng literal."));
+        std::string value = src.substr(start, current - start);
+        value.push_back('"');
+        return Token(value, line, column, TokenType::LITERAL_STRING);
     }
 
     advance();

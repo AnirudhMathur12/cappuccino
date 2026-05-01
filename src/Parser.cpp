@@ -368,6 +368,9 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
     }
 
     if (match(TokenType::LEFT_SQUARE)) {
+        if (type.kind == TypeKind::VOID) {
+            error(identifierTypeToken, "Arrays of type 'void' are not allowed.");
+        }
         consume(TokenType::LITERAL_INTEGER, "Expected array length. ");
         int length = std::get<uint64_t>(previous().fd);
         consume(TokenType::RIGHT_SQUARE, "Expected ']' after array length.");
@@ -406,7 +409,10 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
                 } catch (const TypeError &e) {
                     ErrorReporter::report(e);
                 }
-                paramTypes.push_back(argType);
+
+                if (argType.kind == TypeKind::CLASS) {
+                    error(arg_type_tok, "Class parameters by value are not supported. Use pointers.");
+                }
 
                 if (!symbolTable.declare(arg_name_tok.lexeme, argType)) {
                     // throw ParseError(arg_name_tok, "Duplicate parameter name.");
@@ -419,10 +425,17 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
 
                 args.push_back(
                     std::make_unique<FunctionParameterStmt>(std::move(arg_type_tok), std::move(arg_name_tok.lexeme), sym->offset));
+                paramTypes.push_back(argType);
             } while (match(TokenType::COMMA));
         }
 
-        symbolTable.declareFunction(identifierName.lexeme, type, paramTypes);
+        if (type.kind == TypeKind::CLASS) {
+            error(identifierName, "Returning class by value is not supported. Use pointers.");
+        }
+
+        if (!symbolTable.declareFunction(identifierName.lexeme, type, paramTypes)) {
+            error(identifierName, "Function '" + identifierName.lexeme + "' already declared.");
+        }
 
         std::cout << "--- Inside Function " << identifierName.lexeme << " (Params parsed) ---" << std::endl;
 
@@ -444,8 +457,16 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
 
     std::optional<ExprPtr> init;
     if (match(TokenType::OPERATOR_ASSIGNMENT)) {
+        if (type.kind == TypeKind::CLASS) {
+            error(identifierTypeToken, "Class copy initialization is not supported. Use field assignments.");
+        }
         init = parseExpression();
     }
+
+    if (type.kind == TypeKind::VOID) {
+        error(identifierTypeToken, "Variables of type void are not allowed.");
+    }
+
     consume(TokenType::SEMICOLON, "Expected ';' after initialization.");
 
     if (!symbolTable.declare(identifierName.lexeme, type)) {
@@ -550,18 +571,114 @@ StmtPtr Parser::parseClassDecl() {
     classInfo.name = className.lexeme;
     size_t current_offset = 0;
 
+    size_t scan_pos = pos;
+    while (scan_pos < tokens.size() && tokens[scan_pos].type != TokenType::RIGHT_CURLY) {
+        Token typeTok = tokens[scan_pos++];
+
+        Type memberType = TypeSystem::Int64;
+        try {
+            memberType = TypeSystem::from_string(typeTok.lexeme);
+        } catch (const TypeError &e) {
+            ErrorReporter::report(e);
+        }
+
+        if (scan_pos >= tokens.size() || tokens[scan_pos].type != TokenType::IDENTIFIER) {
+            error(tokens[scan_pos - 1], "Expected member name.");
+        }
+
+        Token memberName = tokens[scan_pos++];
+
+        if (scan_pos < tokens.size() && tokens[scan_pos].type == TokenType::LEFT_PAREN) {
+            scan_pos++;
+
+            if (memberType.kind == TypeKind::CLASS) {
+                error(memberName, "Returning class by value is not supported. Use pointers.");
+            }
+
+            std::vector<Type> paramTypes;
+            Type thisType = TypeSystem::createPointer(Type{.name = classInfo.name, .kind = TypeKind::CLASS, .size_bytes = 0});
+            paramTypes.push_back(thisType);
+
+            if (scan_pos < tokens.size() && tokens[scan_pos].type != TokenType::RIGHT_PAREN) {
+                while (true) {
+                    if (scan_pos + 1 >= tokens.size()) {
+                        error(tokens[scan_pos], "Expected parameter type and name.");
+                    }
+
+                    Token argTypeTok = tokens[scan_pos++];
+                    Token argNameTok = tokens[scan_pos++];
+
+                    Type argType = TypeSystem::Int64;
+                    try {
+                        argType = TypeSystem::from_string(argTypeTok.lexeme);
+                    } catch (const TypeError &e) {
+                        ErrorReporter::report(e);
+                    }
+
+                    if (argType.kind == TypeKind::CLASS) {
+                        error(argTypeTok, "Class parameters by value are not supported. Use pointers.");
+                    }
+
+                    paramTypes.push_back(argType);
+
+                    if (scan_pos < tokens.size() && tokens[scan_pos].type == TokenType::COMMA) {
+                        scan_pos++;
+                        continue;
+                    }
+                    break;
+                }
+            }
+
+            if (scan_pos >= tokens.size() || tokens[scan_pos].type != TokenType::RIGHT_PAREN) {
+                error(tokens[scan_pos - 1], "Expected ')' after parameters.");
+            }
+            scan_pos++;
+
+            std::string mangledName = mangle_method(classInfo.name, memberName.lexeme);
+            if (!symbolTable.declareFunction(mangledName, memberType, paramTypes)) {
+                error(memberName, "Duplicate method '" + memberName.lexeme + "'.");
+            }
+
+            if (scan_pos >= tokens.size() || tokens[scan_pos].type != TokenType::LEFT_CURLY) {
+                error(tokens[scan_pos - 1], "Expected '{' before method body.");
+            }
+
+            int brace_depth = 1;
+            scan_pos++;
+            while (scan_pos < tokens.size() && brace_depth > 0) {
+                if (tokens[scan_pos].type == TokenType::LEFT_CURLY) brace_depth++;
+                if (tokens[scan_pos].type == TokenType::RIGHT_CURLY) brace_depth--;
+                scan_pos++;
+            }
+        } else {
+            if (scan_pos >= tokens.size() || tokens[scan_pos].type != TokenType::SEMICOLON) {
+                error(tokens[scan_pos - 1], "Expected ';' after field declaration.");
+            }
+            scan_pos++;
+        }
+    }
+
     std::vector<StmtPtr> methods;
 
     while (!check(TokenType::RIGHT_CURLY) && !isAtEnd()) {
-        Type memberType = TypeSystem::from_string(peek().lexeme);
-        advance(); // consume type
+        Type memberType = TypeSystem::Int64;
+        try {
+            memberType = TypeSystem::from_string(peek().lexeme);
+        } catch (const TypeError &e) {
+            ErrorReporter::report(e);
+        }
+        advance();
 
-        Token memberName = previous(); // wait, you need consume(IDENTIFIER)
+        Token memberName = previous();
         consume(TokenType::IDENTIFIER, "Expected member name.");
         memberName = previous();
 
         if (match(TokenType::LEFT_PAREN)) {
             symbolTable.reset_local_offset();
+
+            if (memberType.kind == TypeKind::CLASS) {
+                error(memberName, "Returning class by value is not supported. Use pointers.");
+            }
 
             std::vector<StmtPtr> args;
             std::vector<Type> paramTypes;
@@ -592,6 +709,10 @@ StmtPtr Parser::parseClassDecl() {
                         ErrorReporter::report(e);
                     }
 
+                    if (argType.kind == TypeKind::CLASS) { // CHANGE
+                        error(arg_type_tok, "Class parameters by value are not supported. Use pointers.");
+                    }
+
                     if (!symbolTable.declare(arg_name_tok.lexeme, argType)) {
                         error(arg_name_tok, "Duplicate parameter name.");
                     }
@@ -603,10 +724,6 @@ StmtPtr Parser::parseClassDecl() {
                 } while (match(TokenType::COMMA));
             }
 
-            // 3) Mangle name and register function
-            std::string mangled_name = mangle_method(classInfo.name, memberName.lexeme);
-            symbolTable.declareFunction(mangled_name, memberType, paramTypes);
-
             consume(TokenType::RIGHT_PAREN, "Expected ')' after method parameters.");
             consume(TokenType::LEFT_CURLY, "Expected '{' before method body.");
 
@@ -616,16 +733,19 @@ StmtPtr Parser::parseClassDecl() {
 
             symbolTable.exit_scope();
 
+            std::string mangled_name = mangle_method(classInfo.name, memberName.lexeme);
             Token mangledToken = memberName;
             mangledToken.lexeme = mangled_name;
 
             methods.push_back(std::make_unique<FunctionDeclStmt>(std::move(memberType), std::move(mangledToken), std::move(args),
                                                                  std::move(block_ptr), function_stack_size));
         } else {
-            // It's a field!
+            if (memberType.kind == TypeKind::VOID) {
+                error(memberName, "Fields of type void are not allowed.");
+            }
+
             consume(TokenType::SEMICOLON, "Expected ';' after field declaration.");
 
-            // Align memory offset
             int alignment = memberType.size_bytes;
             while (current_offset % alignment != 0)
                 current_offset++;
@@ -635,8 +755,8 @@ StmtPtr Parser::parseClassDecl() {
         }
     }
 
-    classInfo.total_size_bytes = current_offset;
-    class_registry[classInfo.name] = classInfo; // Save to registry
+    classInfo.total_size_bytes = (current_offset == 0) ? 1 : current_offset;
+    class_registry[classInfo.name] = classInfo;
 
     consume(TokenType::RIGHT_CURLY, "Expected '}' after class body.");
     consume(TokenType::SEMICOLON, "Expected ';' after '}'.");

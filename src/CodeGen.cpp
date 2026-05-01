@@ -93,6 +93,9 @@ void CodeGen::visitArrayLiteralExpr(const ArrayLiteralExpr *expr) {
 }
 
 void CodeGen::visitPropertyAccessExpr(const PropertyAccessExpr *expr) {
+    if (expr->type.kind == TypeKind::CLASS) {
+        throw SemanticError("Class field access by value is not supported.");
+    }
     auto *ident = dynamic_cast<const IdentifierExpr *>(expr->object.get());
     if (!ident) {
         throw SemanticError("Only direct object identifiers are supported for field access.");
@@ -460,6 +463,10 @@ void CodeGen::visitLiteralExpr(const LiteralExpr *expr) {
 void CodeGen::visitIdentifierExpr(const IdentifierExpr *expr) {
     current_type = expr->type;
 
+    if (current_type.kind == TypeKind::CLASS) {
+        throw SemanticError("Class values cannot be used directly, Use field access or pointers. ");
+    }
+
     if (current_type.is_float) {
         if (current_type.size_bytes == 4) {
             emit("ldur s0, [x29, #-" + std::to_string(expr->offset) + "]");
@@ -781,6 +788,10 @@ void CodeGen::visitAssignment(const BinaryExpr *expr) {
 
         Type varType = ident->type;
 
+        if (varType.kind == TypeKind::CLASS) {
+            throw SemanticError("Class assignment by value is not supported.");
+        }
+
         // Implicit Casting (RHS -> Variable Type)
         if (varType.is_float) {
             if (!current_type.is_float) {
@@ -983,6 +994,10 @@ void CodeGen::visitAssignment(const BinaryExpr *expr) {
             emit("ldr x0, [sp], #16");
 
         Type targetType = prop->type;
+
+        if (targetType.kind == TypeKind::CLASS) {
+            throw SemanticError("Class field assignment by value is not supported.");
+        }
 
         if (targetType.is_float) {
             if (!current_type.is_float) {

@@ -62,10 +62,10 @@ bool SymbolTable::declare(const std::string &name, const Type &type) {
     Scope &current_scope = scopes.back();
 
     // Redeclaration is not allowed
-    if (current_scope.symbols.count(name)) return true;
+    if (current_scope.symbols.count(name)) return false;
 
     // Calculate offset
-    int alignment = type.size_bytes;
+    int alignment = (type.size_bytes > 0) ? type.size_bytes : 1;
     while (current_stack_offset % alignment != 0) {
         current_stack_offset++;
     }
@@ -83,7 +83,7 @@ bool SymbolTable::declareFunction(const std::string &name, const Type &return_ty
     Scope &global_scope = scopes[0];
 
     // Redeclaration is not allowed
-    if (global_scope.symbols.count(name)) return true;
+    if (global_scope.symbols.count(name)) return false;
 
     Symbol s = {.name = name, .type = return_type, .offset = 0, .is_param = false, .is_function = true, .param_types = param_types};
     global_scope.symbols[name] = s;
