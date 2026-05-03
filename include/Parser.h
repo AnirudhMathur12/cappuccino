@@ -20,8 +20,9 @@ class Parser {
     SymbolTable symbolTable;
 
   private:
-    void error(const Token &tok, const std::string &msg);
+    [[noreturn]] void error(const Token &tok, const std::string &msg);
     void synchronize();
+    bool isTypeToken(TokenType t) const;
 
     const std::vector<Token> &tokens;
     size_t pos = 0;

@@ -85,7 +85,7 @@ ExprPtr Parser::parsePrimary() {
                 } while (match(TokenType::COMMA));
             }
 
-            consume(TokenType::RIGHT_PAREN, "Exptected a ')'");
+            consume(TokenType::RIGHT_PAREN, "Expected a ')'");
 
             Type returnType = TypeSystem::Int64;
             std::vector<Type> paramTypes;
@@ -353,9 +353,6 @@ StmtPtr Parser::parseExpressionStatement() {
     return std::make_unique<ExprStmt>(std::move(expr));
 }
 
-std::stack<std::string> var_lookup;
-std::unordered_map<std::string, int> data_type_size_lookup = {{"int", 8}, {"float", 8}};
-
 StmtPtr Parser::parseVarOrFunctionDecl() {
     bool isPtr = false;
     Token identifierTypeToken = previous();
@@ -439,8 +436,8 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
 
         std::cout << "--- Inside Function " << identifierName.lexeme << " (Params parsed) ---" << std::endl;
 
-        consume(TokenType::RIGHT_PAREN, "Exptected a '(' after function definition");
-        consume(TokenType::LEFT_CURLY, "Extected function block after definition");
+        consume(TokenType::RIGHT_PAREN, "Expected a ')' after function definition");
+        consume(TokenType::LEFT_CURLY, "Expected function block after definition");
 
         StmtPtr block_ptr = parseBlock();
 
@@ -503,7 +500,7 @@ StmtPtr Parser::parseBlock() {
 StmtPtr Parser::parseIf() {
     consume(TokenType::LEFT_PAREN, "Expected '(' after If. ");
     ExprPtr condition = parseExpression();
-    consume(TokenType::RIGHT_PAREN, "Exptected ')' after condition");
+    consume(TokenType::RIGHT_PAREN, "Expected ')' after condition");
 
     StmtPtr thenBranch = parseStatement();
     std::optional<StmtPtr> elseBranch;
@@ -784,7 +781,7 @@ Program Parser::parse() {
     return prog;
 }
 
-void Parser::error(const Token &tok, const std::string &msg) {
+[[noreturn]] void Parser::error(const Token &tok, const std::string &msg) {
     ErrorReporter::report(ParseError(tok, msg));
     throw ParserPanic(); // Throwing internal panic to unwind the stack safely
 }
