@@ -77,14 +77,14 @@ enum class TokenType {
 };
 
 inline std::string token_type_to_string(TokenType type);
-inline std::string fd_to_string(const FormattedData &fd);
+inline std::string fd_to_string(const FormattedData& fd);
 
 class Token {
   public:
     Token() = default;
-    Token(const std::string &p_lexeme, int p_row, int p_col, TokenType p_type);
+    Token(const std::string& p_lexeme, int p_row, int p_col, TokenType p_type);
 
-    friend std::ostream &operator<<(std::ostream &os, const Token &tok);
+    friend std::ostream& operator<<(std::ostream& os, const Token& tok);
 
     std::string lexeme;
     int row, column;
@@ -92,11 +92,11 @@ class Token {
     TokenType type;
 };
 
-std::ostream &operator<<(std::ostream &os, const Token &tok);
+std::ostream& operator<<(std::ostream& os, const Token& tok);
 
 class Tokenizer {
   public:
-    Tokenizer(std::string &p_src) : src(p_src) {};
+    Tokenizer(std::string& p_src) : src(p_src) {};
 
     std::vector<Token> tokenize();
 
@@ -108,7 +108,9 @@ class Tokenizer {
     int line = 1;
     int column = 1;
 
-    bool isAtEnd() const { return current >= src.length(); }
+    bool isAtEnd() const {
+        return current >= src.length();
+    }
     char advance();
     char peek() const;
     char peekNext() const;

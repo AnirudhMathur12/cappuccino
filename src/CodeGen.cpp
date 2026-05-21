@@ -1,9 +1,11 @@
-#include "AbstractSyntaxTree.h"
 #include "CodeGen.h"
+
+#include "AbstractSyntaxTree.h"
 #include "Errors.h"
 #include "Token.h"
 #include "Type.h"
 #include "capp_stdlib.h"
+
 #include <cmath>
 #include <cstdint>
 #include <iomanip>
@@ -12,29 +14,39 @@
 #include <string>
 #include <variant>
 
-CodeGen::CodeGen(const Program &prog, std::ostream &output) : prog(prog), out(output), current_type(TypeSystem::Int32) {}
+CodeGen::CodeGen(const Program& prog, std::ostream& output)
+    : prog(prog), out(output), current_type(TypeSystem::Int32) {}
 
-std::string CodeGen::nextLabel(const std::string &prefix) { return prefix + "_" + std::to_string(label_counter++); }
+std::string CodeGen::nextLabel(const std::string& prefix) {
+    return prefix + "_" + std::to_string(label_counter++);
+}
 
-void CodeGen::emit(const std::string &instr) { out << "\t" << instr << "\n"; }
+void CodeGen::emit(const std::string& instr) {
+    out << "\t" << instr << "\n";
+}
 
-void CodeGen::emitLabel(const std::string &label) { out << label << ":\n"; }
+void CodeGen::emitLabel(const std::string& label) {
+    out << label << ":\n";
+}
 
 // Dispatch Methods (Visitor Entry Points)
 
-void CodeGen::genStmt(const Stmt *stmt) {
-    if (stmt) stmt->accept(*this);
+void CodeGen::genStmt(const Stmt* stmt) {
+    if (stmt)
+        stmt->accept(*this);
 }
 
-void CodeGen::genExpr(const Expr *expr) {
-    if (expr) expr->accept(*this);
+void CodeGen::genExpr(const Expr* expr) {
+    if (expr)
+        expr->accept(*this);
 }
 
-void CodeGen::visitArrayAccessExpr(const ArrayAccessExpr *expr) {
+void CodeGen::visitArrayAccessExpr(const ArrayAccessExpr* expr) {
     genExpr(expr->idx.get());
 
-    auto *ident = dynamic_cast<const IdentifierExpr *>(expr->array.get());
-    if (!ident) throw SemanticError("Only direct array identifiers are supported in MVP.");
+    auto* ident = dynamic_cast<const IdentifierExpr*>(expr->array.get());
+    if (!ident)
+        throw SemanticError("Only direct array identifiers are supported in MVP.");
 
     Type arrayType = ident->type;
     Type elementType = *arrayType.baseType;
@@ -88,15 +100,15 @@ void CodeGen::visitArrayAccessExpr(const ArrayAccessExpr *expr) {
     current_type = elementType;
 }
 
-void CodeGen::visitArrayLiteralExpr(const ArrayLiteralExpr *expr) {
+void CodeGen::visitArrayLiteralExpr(const ArrayLiteralExpr* expr) {
     throw SemanticError("Array literals are currently only supported in variable declarations.");
 }
 
-void CodeGen::visitPropertyAccessExpr(const PropertyAccessExpr *expr) {
+void CodeGen::visitPropertyAccessExpr(const PropertyAccessExpr* expr) {
     if (expr->type.kind == TypeKind::CLASS) {
         throw SemanticError("Class field access by value is not supported.");
     }
-    auto *ident = dynamic_cast<const IdentifierExpr *>(expr->object.get());
+    auto* ident = dynamic_cast<const IdentifierExpr*>(expr->object.get());
     if (!ident) {
         throw SemanticError("Only direct object identifiers are supported for field access.");
     }
@@ -138,7 +150,7 @@ void CodeGen::generate() {
     out << ".globl _main\n";
     out << ".align 2\n\n";
 
-    for (const auto &s : prog.statements) {
+    for (const auto& s : prog.statements) {
         genStmt(s.get());
     }
 
@@ -154,7 +166,7 @@ void CodeGen::generate() {
 
     if (!string_literals.empty()) {
         out << "\n.section __TEXT,__cstring,cstring_literals\n";
-        for (const auto &[label, value] : string_literals) {
+        for (const auto& [label, value] : string_literals) {
             emitLabel(label);
             out << "\t.asciz \"" << value << "\"\n";
         }
@@ -165,13 +177,13 @@ void CodeGen::generate() {
 
 // Statement Visitors
 
-void CodeGen::visitBlockStmt(const BlockStmt *stmt) {
-    for (const auto &s : stmt->statements) {
+void CodeGen::visitBlockStmt(const BlockStmt* stmt) {
+    for (const auto& s : stmt->statements) {
         genStmt(s.get());
     }
 }
 
-void CodeGen::visitReturnStmt(const ReturnStmt *stmt) {
+void CodeGen::visitReturnStmt(const ReturnStmt* stmt) {
     if (stmt->value) {
         genExpr(stmt->value.value().get()); // Evaluate result into x0/d0
     } else {
@@ -180,7 +192,8 @@ void CodeGen::visitReturnStmt(const ReturnStmt *stmt) {
 
     // Stack Cleanup
     int stackSize = current_func_stack_size;
-    if (stackSize % 16 != 0) stackSize += (16 - (stackSize % 16));
+    if (stackSize % 16 != 0)
+        stackSize += (16 - (stackSize % 16));
 
     if (stackSize > 0) {
         emit("add sp, sp, #" + std::to_string(stackSize));
@@ -189,10 +202,11 @@ void CodeGen::visitReturnStmt(const ReturnStmt *stmt) {
     emit("ret");
 }
 
-void CodeGen::visitVariableDeclStmt(const VariableDeclStmt *stmt) {
+void CodeGen::visitVariableDeclStmt(const VariableDeclStmt* stmt) {
     if (stmt->initializer) {
 
-        if (auto *arrayLit = dynamic_cast<const ArrayLiteralExpr *>(stmt->initializer.value().get())) {
+        if (auto* arrayLit =
+                dynamic_cast<const ArrayLiteralExpr*>(stmt->initializer.value().get())) {
             Type varType = stmt->type;
 
             if (varType.kind != TypeKind::ARRAY) {
@@ -212,14 +226,16 @@ void CodeGen::visitVariableDeclStmt(const VariableDeclStmt *stmt) {
                 if (elementType.is_float) {
                     if (!current_type.is_float) {
                         emit("scvtf d0, x0");
-                        current_type = (current_type.size_bytes == 4) ? TypeSystem::Float32 : TypeSystem::Float64;
+                        current_type = (current_type.size_bytes == 4) ? TypeSystem::Float32
+                                                                      : TypeSystem::Float64;
                     }
                     if (elementType.size_bytes == 4 && current_type.size_bytes == 8)
                         emit("fcvt s0, d0");
                     else if (elementType.size_bytes == 8 && current_type.size_bytes == 4)
                         emit("fcvt d0, s0");
                 } else {
-                    if (current_type.is_float) emit("fcvtzs x0, d0");
+                    if (current_type.is_float)
+                        emit("fcvtzs x0, d0");
                 }
 
                 // Array base is at: x29 - stmt->offset
@@ -253,7 +269,8 @@ void CodeGen::visitVariableDeclStmt(const VariableDeclStmt *stmt) {
             // Int -> Float
             if (!current_type.is_float) {
                 emit("scvtf d0, x0");
-                current_type = (current_type.size_bytes == 4) ? TypeSystem::Float32 : TypeSystem::Float64;
+                current_type =
+                    (current_type.size_bytes == 4) ? TypeSystem::Float32 : TypeSystem::Float64;
             }
 
             // Float64 -> Float32 (Downcast)
@@ -293,9 +310,11 @@ void CodeGen::visitVariableDeclStmt(const VariableDeclStmt *stmt) {
     }
 }
 
-void CodeGen::visitExprStmt(const ExprStmt *stmt) { genExpr(stmt->expr.get()); }
+void CodeGen::visitExprStmt(const ExprStmt* stmt) {
+    genExpr(stmt->expr.get());
+}
 
-void CodeGen::visitIfStmt(const IfStmt *stmt) {
+void CodeGen::visitIfStmt(const IfStmt* stmt) {
     std::string labelElse = nextLabel("L_else");
     std::string labelEnd = nextLabel("L_if_end");
 
@@ -313,7 +332,7 @@ void CodeGen::visitIfStmt(const IfStmt *stmt) {
     emitLabel(labelEnd);
 }
 
-void CodeGen::visitWhileStmt(const WhileStmt *stmt) {
+void CodeGen::visitWhileStmt(const WhileStmt* stmt) {
     std::string labelStart = nextLabel("L_while_start");
     std::string labelEnd = nextLabel("L_while_end");
 
@@ -329,7 +348,7 @@ void CodeGen::visitWhileStmt(const WhileStmt *stmt) {
     emitLabel(labelEnd);
 }
 
-void CodeGen::visitForStmt(const ForStmt *stmt) {
+void CodeGen::visitForStmt(const ForStmt* stmt) {
     std::string labelStart = nextLabel("L_for_start");
     std::string labelEnd = nextLabel("L_for_end");
 
@@ -355,7 +374,7 @@ void CodeGen::visitForStmt(const ForStmt *stmt) {
     emitLabel(labelEnd);
 }
 
-void CodeGen::visitFunctionDeclStmt(const FunctionDeclStmt *stmt) {
+void CodeGen::visitFunctionDeclStmt(const FunctionDeclStmt* stmt) {
     std::string name = "_" + stmt->name_token.lexeme;
 
     // Save previous function state
@@ -369,7 +388,8 @@ void CodeGen::visitFunctionDeclStmt(const FunctionDeclStmt *stmt) {
     emit("mov x29, sp");
 
     int stackSize = stmt->stack_size;
-    if (stackSize % 16 != 0) stackSize += (16 - (stackSize % 16));
+    if (stackSize % 16 != 0)
+        stackSize += (16 - (stackSize % 16));
 
     if (stackSize > 0) {
         emit("sub sp, sp, #" + std::to_string(stackSize));
@@ -378,7 +398,7 @@ void CodeGen::visitFunctionDeclStmt(const FunctionDeclStmt *stmt) {
     // Process parameters
     // We use current_param_index to track which register (w0/x0/s0/d0 etc) to use
     current_param_index = 0;
-    for (const auto &param : stmt->params) {
+    for (const auto& param : stmt->params) {
         genStmt(param.get()); // Dispatches to visitFunctionParameterStmt
         current_param_index++;
     }
@@ -398,19 +418,22 @@ void CodeGen::visitFunctionDeclStmt(const FunctionDeclStmt *stmt) {
     current_func_stack_size = saved_stack_size;
 }
 
-void CodeGen::visitFunctionParameterStmt(const FunctionParameterStmt *stmt) {
+void CodeGen::visitFunctionParameterStmt(const FunctionParameterStmt* stmt) {
     // This method is called via genStmt loop in visitFunctionDeclStmt
     int offset = stmt->offset;
     Type param_type = TypeSystem::from_string(stmt->type_token.lexeme);
 
     // Limit to 8 registers for arguments
-    if (current_param_index > 7) return;
+    if (current_param_index > 7)
+        return;
 
     if (param_type.is_float) {
-        std::string reg = (param_type.size_bytes == 4 ? "s" : "d") + std::to_string(current_param_index);
+        std::string reg =
+            (param_type.size_bytes == 4 ? "s" : "d") + std::to_string(current_param_index);
         emit("stur " + reg + ", [x29, #-" + std::to_string(offset) + "]");
     } else {
-        std::string reg = (param_type.size_bytes < 8 ? "w" : "x") + std::to_string(current_param_index);
+        std::string reg =
+            (param_type.size_bytes < 8 ? "w" : "x") + std::to_string(current_param_index);
 
         if (param_type.size_bytes == 1) {
             emit("sturb " + reg + ", [x29, #-" + std::to_string(offset) + "]");
@@ -426,7 +449,7 @@ void CodeGen::visitFunctionParameterStmt(const FunctionParameterStmt *stmt) {
 
 // Expression Visitors
 
-void CodeGen::visitLiteralExpr(const LiteralExpr *expr) {
+void CodeGen::visitLiteralExpr(const LiteralExpr* expr) {
     if (std::holds_alternative<uint64_t>(expr->token.fd)) {
         uint64_t val = std::get<uint64_t>(expr->token.fd);
         emit("ldr x0, =" + std::to_string(val));
@@ -460,7 +483,7 @@ void CodeGen::visitLiteralExpr(const LiteralExpr *expr) {
     }
 }
 
-void CodeGen::visitIdentifierExpr(const IdentifierExpr *expr) {
+void CodeGen::visitIdentifierExpr(const IdentifierExpr* expr) {
     current_type = expr->type;
 
     if (current_type.kind == TypeKind::CLASS) {
@@ -494,7 +517,7 @@ void CodeGen::visitIdentifierExpr(const IdentifierExpr *expr) {
     }
 }
 
-void CodeGen::visitUnaryExpr(const UnaryExpr *expr) {
+void CodeGen::visitUnaryExpr(const UnaryExpr* expr) {
     genExpr(expr->right.get());
 
     switch (expr->op.type) {
@@ -565,7 +588,7 @@ void CodeGen::visitUnaryExpr(const UnaryExpr *expr) {
         break;
     }
     case TokenType::OPERATOR_AMPERSAND: {
-        auto *ident = dynamic_cast<IdentifierExpr *>(expr->right.get());
+        auto* ident = dynamic_cast<IdentifierExpr*>(expr->right.get());
         if (!ident) {
             throw SemanticError("Semantic Error: '&' operator requires a variable identifier.");
         }
@@ -575,13 +598,16 @@ void CodeGen::visitUnaryExpr(const UnaryExpr *expr) {
         current_type = TypeSystem::createPointer(ident->type);
         break;
     }
-    default: throw SemanticError("Unknown unary operator");
+    default:
+        throw SemanticError("Unknown unary operator");
     }
 }
 
-void CodeGen::visitGroupingExpr(const GroupingExpr *expr) { genExpr(expr->expr.get()); }
+void CodeGen::visitGroupingExpr(const GroupingExpr* expr) {
+    genExpr(expr->expr.get());
+}
 
-void CodeGen::visitBinaryExpr(const BinaryExpr *expr) {
+void CodeGen::visitBinaryExpr(const BinaryExpr* expr) {
     if (expr->op.type == TokenType::OPERATOR_ASSIGNMENT) {
         visitAssignment(expr);
         return;
@@ -625,10 +651,18 @@ void CodeGen::visitBinaryExpr(const BinaryExpr *expr) {
         if (rightType.size_bytes == 4 && leftType.size_bytes == 4) {
             current_type = TypeSystem::Float32;
             switch (expr->op.type) {
-            case TokenType::OPERATOR_PLUS: emit("fadd s0, s0, s1"); break;
-            case TokenType::OPERATOR_MINUS: emit("fsub s0, s0, s1"); break;
-            case TokenType::OPERATOR_ASTERISK: emit("fmul s0, s0, s1"); break;
-            case TokenType::OPERATOR_FORWARD_SLASH: emit("fdiv s0, s0, s1"); break;
+            case TokenType::OPERATOR_PLUS:
+                emit("fadd s0, s0, s1");
+                break;
+            case TokenType::OPERATOR_MINUS:
+                emit("fsub s0, s0, s1");
+                break;
+            case TokenType::OPERATOR_ASTERISK:
+                emit("fmul s0, s0, s1");
+                break;
+            case TokenType::OPERATOR_FORWARD_SLASH:
+                emit("fdiv s0, s0, s1");
+                break;
             case TokenType::OPERATOR_LESS:
                 emit("fcmp s0, s1");
                 emit("cset x0, mi");
@@ -659,18 +693,29 @@ void CodeGen::visitBinaryExpr(const BinaryExpr *expr) {
                 emit("cset x0, ne");
                 current_type = TypeSystem::Int64;
                 break;
-            default: break;
+            default:
+                break;
             }
         } else {
             current_type = TypeSystem::Float64;
-            if (leftType.size_bytes == 4) emit("fcvt d0, s0");
-            if (rightType.size_bytes == 4) emit("fcvt d1, s1");
+            if (leftType.size_bytes == 4)
+                emit("fcvt d0, s0");
+            if (rightType.size_bytes == 4)
+                emit("fcvt d1, s1");
 
             switch (expr->op.type) {
-            case TokenType::OPERATOR_PLUS: emit("fadd d0, d0, d1"); break;
-            case TokenType::OPERATOR_MINUS: emit("fsub d0, d0, d1"); break;
-            case TokenType::OPERATOR_ASTERISK: emit("fmul d0, d0, d1"); break;
-            case TokenType::OPERATOR_FORWARD_SLASH: emit("fdiv d0, d0, d1"); break;
+            case TokenType::OPERATOR_PLUS:
+                emit("fadd d0, d0, d1");
+                break;
+            case TokenType::OPERATOR_MINUS:
+                emit("fsub d0, d0, d1");
+                break;
+            case TokenType::OPERATOR_ASTERISK:
+                emit("fmul d0, d0, d1");
+                break;
+            case TokenType::OPERATOR_FORWARD_SLASH:
+                emit("fdiv d0, d0, d1");
+                break;
             case TokenType::OPERATOR_LESS:
                 emit("fcmp d0, d1");
                 emit("cset x0, mi");
@@ -701,7 +746,8 @@ void CodeGen::visitBinaryExpr(const BinaryExpr *expr) {
                 emit("cset x0, ne");
                 current_type = TypeSystem::Int64;
                 break;
-            default: break;
+            default:
+                break;
             }
         }
     } else {
@@ -710,9 +756,15 @@ void CodeGen::visitBinaryExpr(const BinaryExpr *expr) {
         bool is_unsigned_math = (!leftType.is_signed || !rightType.is_signed);
 
         switch (expr->op.type) {
-        case TokenType::OPERATOR_PLUS: emit("add x0, x0, x1"); break;
-        case TokenType::OPERATOR_MINUS: emit("sub x0, x0, x1"); break;
-        case TokenType::OPERATOR_ASTERISK: emit("mul x0, x0, x1"); break;
+        case TokenType::OPERATOR_PLUS:
+            emit("add x0, x0, x1");
+            break;
+        case TokenType::OPERATOR_MINUS:
+            emit("sub x0, x0, x1");
+            break;
+        case TokenType::OPERATOR_ASTERISK:
+            emit("mul x0, x0, x1");
+            break;
         case TokenType::OPERATOR_FORWARD_SLASH:
             if (is_unsigned_math)
                 emit("udiv x0, x0, x1");
@@ -735,7 +787,8 @@ void CodeGen::visitBinaryExpr(const BinaryExpr *expr) {
             } else if (!leftType.is_signed && !rightType.is_signed) {
                 emit("cmp x0, x1");
                 emit("cset x0, lo");
-            } else { /* Mixed sign comparison logic omitted for brevity, use standard signed if unsure */
+            } else { /* Mixed sign comparison logic omitted for brevity, use standard signed if
+                        unsure */
                 emit("cmp x0, x1");
                 emit("cset x0, lt");
             }
@@ -776,14 +829,15 @@ void CodeGen::visitBinaryExpr(const BinaryExpr *expr) {
                 emit("cset x0, ge");
             }
             break;
-        default: break;
+        default:
+            break;
         }
     }
 }
 
-void CodeGen::visitAssignment(const BinaryExpr *expr) {
+void CodeGen::visitAssignment(const BinaryExpr* expr) {
     // Case 1: Standard Variable Assignment (e.g., x = 5)
-    if (auto *ident = dynamic_cast<const IdentifierExpr *>(expr->left.get())) {
+    if (auto* ident = dynamic_cast<const IdentifierExpr*>(expr->left.get())) {
         genExpr(expr->right.get());
 
         Type varType = ident->type;
@@ -796,7 +850,8 @@ void CodeGen::visitAssignment(const BinaryExpr *expr) {
         if (varType.is_float) {
             if (!current_type.is_float) {
                 emit("scvtf d0, x0"); // Int -> Float
-                current_type = (current_type.size_bytes == 4) ? TypeSystem::Float32 : TypeSystem::Float64;
+                current_type =
+                    (current_type.size_bytes == 4) ? TypeSystem::Float32 : TypeSystem::Float64;
             }
 
             // Float64 -> Float32 (Downcast)
@@ -838,9 +893,10 @@ void CodeGen::visitAssignment(const BinaryExpr *expr) {
     }
 
     //  Pointer Dereference Assignment (e.g., *ptr = 5)
-    else if (auto *unary = dynamic_cast<const UnaryExpr *>(expr->left.get())) {
+    else if (auto* unary = dynamic_cast<const UnaryExpr*>(expr->left.get())) {
         if (unary->op.type != TokenType::OPERATOR_ASTERISK) {
-            throw SemanticError("Invalid assignment target. Expected variable or pointer dereference.");
+            throw SemanticError(
+                "Invalid assignment target. Expected variable or pointer dereference.");
         }
 
         // Evaluate the Pointer (LHS) to get the target memory address
@@ -863,7 +919,8 @@ void CodeGen::visitAssignment(const BinaryExpr *expr) {
         if (targetType.is_float) {
             if (!current_type.is_float) {
                 emit("scvtf d0, x0"); // Int -> Float
-                current_type = (current_type.size_bytes == 4) ? TypeSystem::Float32 : TypeSystem::Float64;
+                current_type =
+                    (current_type.size_bytes == 4) ? TypeSystem::Float32 : TypeSystem::Float64;
             }
 
             if (targetType.size_bytes == 4 && current_type.size_bytes == 8) {
@@ -901,7 +958,7 @@ void CodeGen::visitAssignment(const BinaryExpr *expr) {
 
         current_type = targetType;
 
-    } else if (auto *arrAccess = dynamic_cast<const ArrayAccessExpr *>(expr->left.get())) {
+    } else if (auto* arrAccess = dynamic_cast<const ArrayAccessExpr*>(expr->left.get())) {
         genExpr(expr->right.get());
 
         if (current_type.is_float)
@@ -911,14 +968,17 @@ void CodeGen::visitAssignment(const BinaryExpr *expr) {
 
         genExpr(arrAccess->idx.get());
 
-        auto *ident = dynamic_cast<const IdentifierExpr *>(arrAccess->array.get());
+        auto* ident = dynamic_cast<const IdentifierExpr*>(arrAccess->array.get());
         Type targetType = *ident->type.baseType;
 
         requires_bounds_panic = true;
         emit("cmp x0, #" + std::to_string(ident->type.array_length));
         emit("b.hs L_bounds_violation_panic");
 
-        int shift = (targetType.size_bytes == 8) ? 3 : (targetType.size_bytes == 4) ? 2 : (targetType.size_bytes == 2) ? 1 : 0;
+        int shift = (targetType.size_bytes == 8)   ? 3
+                    : (targetType.size_bytes == 4) ? 2
+                    : (targetType.size_bytes == 2) ? 1
+                                                   : 0;
         if (shift > 0)
             emit("lsl x1, x0, #" + std::to_string(shift));
         else
@@ -935,7 +995,8 @@ void CodeGen::visitAssignment(const BinaryExpr *expr) {
         if (targetType.is_float) {
             if (!current_type.is_float) {
                 emit("scvtf d0, x0"); // Int -> Float
-                current_type = (current_type.size_bytes == 4) ? TypeSystem::Float32 : TypeSystem::Float64;
+                current_type =
+                    (current_type.size_bytes == 4) ? TypeSystem::Float32 : TypeSystem::Float64;
             }
 
             // Float64 -> Float32 (Downcast)
@@ -970,7 +1031,7 @@ void CodeGen::visitAssignment(const BinaryExpr *expr) {
         }
 
         current_type = targetType;
-    } else if (auto *prop = dynamic_cast<const PropertyAccessExpr *>(expr->left.get())) {
+    } else if (auto* prop = dynamic_cast<const PropertyAccessExpr*>(expr->left.get())) {
         genExpr(expr->right.get());
 
         if (current_type.is_float)
@@ -978,9 +1039,10 @@ void CodeGen::visitAssignment(const BinaryExpr *expr) {
         else
             emit("str x0, [sp, #-16]!");
 
-        auto *ident = dynamic_cast<const IdentifierExpr *>(prop->object.get());
+        auto* ident = dynamic_cast<const IdentifierExpr*>(prop->object.get());
         if (!ident) {
-            throw SemanticError("Only direct object identifiers are supported for field assignment.");
+            throw SemanticError(
+                "Only direct object identifiers are supported for field assignment.");
         }
 
         emit("sub x2, x29, #" + std::to_string(ident->offset));
@@ -1002,7 +1064,8 @@ void CodeGen::visitAssignment(const BinaryExpr *expr) {
         if (targetType.is_float) {
             if (!current_type.is_float) {
                 emit("scvtf d0, x0");
-                current_type = (current_type.size_bytes == 4) ? TypeSystem::Float32 : TypeSystem::Float64;
+                current_type =
+                    (current_type.size_bytes == 4) ? TypeSystem::Float32 : TypeSystem::Float64;
             }
 
             if (targetType.size_bytes == 4 && current_type.size_bytes == 8) {
@@ -1038,11 +1101,11 @@ void CodeGen::visitAssignment(const BinaryExpr *expr) {
     }
 }
 
-void CodeGen::visitFunctionCallExpr(const FunctionCallExpr *expr) {
+void CodeGen::visitFunctionCallExpr(const FunctionCallExpr* expr) {
     // Evaluate arguments and push them (preserving type info)
     std::vector<Type> argTypes;
     for (int i = 0; i < expr->args.size(); i++) {
-        const auto &arg = expr->args[i];
+        const auto& arg = expr->args[i];
         genExpr(arg.get());
 
         if (i < expr->param_types.size()) {
@@ -1117,8 +1180,8 @@ void CodeGen::visitFunctionCallExpr(const FunctionCallExpr *expr) {
     }
 }
 
-void CodeGen::visitClassDeclStmt(const ClassDeclStmt *stmt) {
-    for (const auto &method : stmt->methods) {
+void CodeGen::visitClassDeclStmt(const ClassDeclStmt* stmt) {
+    for (const auto& method : stmt->methods) {
         genStmt(method.get());
     }
 }

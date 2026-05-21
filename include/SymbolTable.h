@@ -27,11 +27,12 @@ class SymbolTable {
 
     void dump() const;
 
-    bool declare(const std::string &name, const Type &type);
+    bool declare(const std::string& name, const Type& type);
 
-    bool declareFunction(const std::string &name, const Type &return_type, const std::vector<Type> &param_types);
+    bool declareFunction(const std::string& name, const Type& return_type,
+                         const std::vector<Type>& param_types);
 
-    std::optional<Symbol> lookup(const std::string &name) const;
+    std::optional<Symbol> lookup(const std::string& name) const;
 
     int getMaxStackSize() const;
 

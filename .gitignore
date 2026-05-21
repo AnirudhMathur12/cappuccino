@@ -7,5 +7,8 @@ CMakeFiles/
 .cache
 compile_commands.json
 
+# clang-format
+.clang-format
+
 # MacOS
 .DS_Store

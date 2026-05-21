@@ -21,8 +21,8 @@ struct Type {
     std::shared_ptr<Type> baseType;
     int array_length = 0;
 
-    bool operator==(const Type &other) const;
-    bool operator!=(const Type &other) const;
+    bool operator==(const Type& other) const;
+    bool operator!=(const Type& other) const;
 };
 
 struct FieldInfo {
@@ -65,9 +65,9 @@ class TypeSystem {
     // Class
     static const Type Class;
 
-    static Type from_string(const std::string &typeName);
-    static Type createArray(const Type &base, int length);
-    static Type createPointer(const Type &base);
+    static Type from_string(const std::string& typeName);
+    static Type createArray(const Type& base, int length);
+    static Type createPointer(const Type& base);
 };
 
 #endif

@@ -1,17 +1,21 @@
-#include "AbstractSyntaxTree.h"
 #include "DebugVisitor.h"
+
+#include "AbstractSyntaxTree.h"
 #include "Type.h"
+
 #include <iostream>
 #include <variant>
 
-std::string DebugVisitor::pad() const { return std::string(indent_level, ' '); }
+std::string DebugVisitor::pad() const {
+    return std::string(indent_level, ' ');
+}
 
 // Expressions
 
-void DebugVisitor::visitLiteralExpr(const LiteralExpr *expr) {
+void DebugVisitor::visitLiteralExpr(const LiteralExpr* expr) {
     std::cout << pad() << "Literal(";
     std::visit(
-        [](auto &&val) {
+        [](auto&& val) {
             using T = std::decay_t<decltype(val)>;
             if constexpr (std::is_same_v<std::string, T>) {
                 std::cout << "\"" << val << "\"";
@@ -25,19 +29,20 @@ void DebugVisitor::visitLiteralExpr(const LiteralExpr *expr) {
     std::cout << ")" << std::endl;
 }
 
-void DebugVisitor::visitIdentifierExpr(const IdentifierExpr *expr) {
-    std::cout << pad() << "Identifier(" << expr->name << " [offset: " << expr->offset << ", type: " << expr->type.name
-              << ", kind: " << kind_to_string(expr->type.kind) << "])\n";
+void DebugVisitor::visitIdentifierExpr(const IdentifierExpr* expr) {
+    std::cout << pad() << "Identifier(" << expr->name << " [offset: " << expr->offset
+              << ", type: " << expr->type.name << ", kind: " << kind_to_string(expr->type.kind)
+              << "])\n";
 }
 
-void DebugVisitor::visitUnaryExpr(const UnaryExpr *expr) {
+void DebugVisitor::visitUnaryExpr(const UnaryExpr* expr) {
     std::cout << pad() << "Unary(" << expr->op.lexeme << ")\n";
     indent_level += 2;
     expr->right->accept(*this);
     indent_level -= 2;
 }
 
-void DebugVisitor::visitBinaryExpr(const BinaryExpr *expr) {
+void DebugVisitor::visitBinaryExpr(const BinaryExpr* expr) {
     std::cout << pad() << "Binary(" << expr->op.lexeme << ")\n";
     indent_level += 2;
     expr->left->accept(*this);
@@ -45,27 +50,27 @@ void DebugVisitor::visitBinaryExpr(const BinaryExpr *expr) {
     indent_level -= 2;
 }
 
-void DebugVisitor::visitGroupingExpr(const GroupingExpr *expr) {
+void DebugVisitor::visitGroupingExpr(const GroupingExpr* expr) {
     std::cout << pad() << "Grouping\n";
     indent_level += 2;
     expr->expr->accept(*this);
     indent_level -= 2;
 }
 
-void DebugVisitor::visitFunctionCallExpr(const FunctionCallExpr *expr) {
+void DebugVisitor::visitFunctionCallExpr(const FunctionCallExpr* expr) {
     std::cout << pad() << "Function Call:" << std::endl;
     std::cout << pad() << "\tFunction Name: " << expr->name_token.lexeme << std::endl;
     std::cout << pad() << "\tReturn Type:" << expr->return_type.name << std::endl;
     std::cout << pad() << "\tArguments" << std::endl;
 
     indent_level += 8;
-    for (auto &e : expr->args) {
+    for (auto& e : expr->args) {
         e->accept(*this);
     }
     indent_level -= 8;
 }
 
-void DebugVisitor::visitArrayAccessExpr(const ArrayAccessExpr *expr) {
+void DebugVisitor::visitArrayAccessExpr(const ArrayAccessExpr* expr) {
     std::cout << pad() << "ArrayAccess\n";
 
     std::cout << pad() << "  Array:\n";
@@ -79,7 +84,7 @@ void DebugVisitor::visitArrayAccessExpr(const ArrayAccessExpr *expr) {
     indent_level -= 4;
 }
 
-void DebugVisitor::visitArrayLiteralExpr(const ArrayLiteralExpr *expr) {
+void DebugVisitor::visitArrayLiteralExpr(const ArrayLiteralExpr* expr) {
     std::cout << pad() << "ArrayLiteral (" << expr->elements.size() << " elements)\n";
 
     indent_level += 2;
@@ -92,7 +97,7 @@ void DebugVisitor::visitArrayLiteralExpr(const ArrayLiteralExpr *expr) {
     indent_level -= 2;
 }
 
-void DebugVisitor::visitPropertyAccessExpr(const PropertyAccessExpr *expr) {
+void DebugVisitor::visitPropertyAccessExpr(const PropertyAccessExpr* expr) {
     std::cout << pad() << "PropertyAccess(" << expr->property_name.lexeme << ")"
               << " [offset=" << expr->field_offset << ", type=" << expr->type.name << "]\n";
     indent_level += 2;
@@ -102,16 +107,17 @@ void DebugVisitor::visitPropertyAccessExpr(const PropertyAccessExpr *expr) {
 
 // Statements
 
-void DebugVisitor::visitExprStmt(const ExprStmt *stmt) {
+void DebugVisitor::visitExprStmt(const ExprStmt* stmt) {
     std::cout << pad() << "Expression\n";
     indent_level += 2;
     stmt->expr->accept(*this);
     indent_level -= 2;
 }
 
-void DebugVisitor::visitVariableDeclStmt(const VariableDeclStmt *stmt) {
-    std::cout << pad() << "VariableDecl(type=" << stmt->type_token.lexeme << ", name=" << stmt->name << ", offset=" << stmt->offset
-              << ", kind=" << kind_to_string(stmt->type.kind) << ")\n";
+void DebugVisitor::visitVariableDeclStmt(const VariableDeclStmt* stmt) {
+    std::cout << pad() << "VariableDecl(type=" << stmt->type_token.lexeme << ", name=" << stmt->name
+              << ", offset=" << stmt->offset << ", kind=" << kind_to_string(stmt->type.kind)
+              << ")\n";
 
     if (stmt->initializer) {
         std::cout << pad() << "  Initializer:\n";
@@ -121,16 +127,16 @@ void DebugVisitor::visitVariableDeclStmt(const VariableDeclStmt *stmt) {
     }
 }
 
-void DebugVisitor::visitBlockStmt(const BlockStmt *stmt) {
+void DebugVisitor::visitBlockStmt(const BlockStmt* stmt) {
     std::cout << pad() << "Block\n";
     indent_level += 2;
-    for (const auto &s : stmt->statements) {
+    for (const auto& s : stmt->statements) {
         s->accept(*this);
     }
     indent_level -= 2;
 }
 
-void DebugVisitor::visitIfStmt(const IfStmt *stmt) {
+void DebugVisitor::visitIfStmt(const IfStmt* stmt) {
     std::cout << pad() << "If\n";
 
     std::cout << pad() << "  Condition:\n";
@@ -151,7 +157,7 @@ void DebugVisitor::visitIfStmt(const IfStmt *stmt) {
     }
 }
 
-void DebugVisitor::visitWhileStmt(const WhileStmt *stmt) {
+void DebugVisitor::visitWhileStmt(const WhileStmt* stmt) {
     std::cout << pad() << "While\n";
     std::cout << pad() << "  Condition:\n";
     indent_level += 4;
@@ -164,22 +170,25 @@ void DebugVisitor::visitWhileStmt(const WhileStmt *stmt) {
     indent_level -= 4;
 }
 
-void DebugVisitor::visitForStmt(const ForStmt *stmt) {
+void DebugVisitor::visitForStmt(const ForStmt* stmt) {
     std::cout << pad() << "For\n";
 
     std::cout << pad() << "  Initializer:\n";
     indent_level += 4;
-    if (stmt->initializer) (*stmt->initializer)->accept(*this);
+    if (stmt->initializer)
+        (*stmt->initializer)->accept(*this);
     indent_level -= 4;
 
     std::cout << pad() << "  Condition:\n";
     indent_level += 4;
-    if (stmt->condition) (*stmt->condition)->accept(*this);
+    if (stmt->condition)
+        (*stmt->condition)->accept(*this);
     indent_level -= 4;
 
     std::cout << pad() << "  Increment:\n";
     indent_level += 4;
-    if (stmt->increment) (*stmt->increment)->accept(*this);
+    if (stmt->increment)
+        (*stmt->increment)->accept(*this);
     indent_level -= 4;
 
     std::cout << pad() << "  Body:\n";
@@ -188,7 +197,7 @@ void DebugVisitor::visitForStmt(const ForStmt *stmt) {
     indent_level -= 4;
 }
 
-void DebugVisitor::visitReturnStmt(const ReturnStmt *stmt) {
+void DebugVisitor::visitReturnStmt(const ReturnStmt* stmt) {
     std::cout << pad() << "Return\n";
     std::cout << pad() << "  Value:\n";
     if (stmt->value) {
@@ -200,16 +209,18 @@ void DebugVisitor::visitReturnStmt(const ReturnStmt *stmt) {
     }
 }
 
-void DebugVisitor::visitFunctionParameterStmt(const FunctionParameterStmt *stmt) {
-    std::cout << pad() << "Type: " << stmt->type_token.lexeme << " Name: " << stmt->name << std::endl;
+void DebugVisitor::visitFunctionParameterStmt(const FunctionParameterStmt* stmt) {
+    std::cout << pad() << "Type: " << stmt->type_token.lexeme << " Name: " << stmt->name
+              << std::endl;
 }
 
-void DebugVisitor::visitFunctionDeclStmt(const FunctionDeclStmt *stmt) {
-    std::cout << pad() << "Function " << stmt->name_token.lexeme << " returns " << stmt->return_type.name << "\n";
+void DebugVisitor::visitFunctionDeclStmt(const FunctionDeclStmt* stmt) {
+    std::cout << pad() << "Function " << stmt->name_token.lexeme << " returns "
+              << stmt->return_type.name << "\n";
     std::cout << pad() << "  Params:\n";
 
     indent_level += 4;
-    for (auto &pr : stmt->params) {
+    for (auto& pr : stmt->params) {
         pr->accept(*this);
     }
     indent_level -= 4;
@@ -222,6 +233,6 @@ void DebugVisitor::visitFunctionDeclStmt(const FunctionDeclStmt *stmt) {
     }
 }
 
-void DebugVisitor::visitClassDeclStmt(const ClassDeclStmt *stmt) {
+void DebugVisitor::visitClassDeclStmt(const ClassDeclStmt* stmt) {
     // do nothing
 }

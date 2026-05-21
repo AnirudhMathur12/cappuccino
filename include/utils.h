@@ -9,9 +9,9 @@
 #include <string>
 #include <utility>
 
-std::optional<std::string> read_file(const std::string &file_name);
+std::optional<std::string> read_file(const std::string& file_name);
 
-std::pair<uint32_t, int> decode_utf8(const std::string &src, size_t pos);
+std::pair<uint32_t, int> decode_utf8(const std::string& src, size_t pos);
 
-std::string mangle_method(const std::string &class_name, const std::string &method_name);
+std::string mangle_method(const std::string& class_name, const std::string& method_name);
 #endif // CAPPUCCINO_UTILS_H

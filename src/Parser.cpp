@@ -1,31 +1,43 @@
+#include "Parser.h"
+
 #include "AbstractSyntaxTree.h"
 #include "Errors.h"
-#include "Parser.h"
 #include "Token.h"
 #include "Type.h"
 #include "utils.h"
+
 #include <cstdint>
 #include <iostream>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
-Parser::Parser(const std::vector<Token> &p_tokens) : tokens(p_tokens) {}
+Parser::Parser(const std::vector<Token>& p_tokens) : tokens(p_tokens) {}
 
-bool Parser::isAtEnd() const { return peek().type == TokenType::TOKEN_EOF; }
+bool Parser::isAtEnd() const {
+    return peek().type == TokenType::TOKEN_EOF;
+}
 
-const Token &Parser::peek() const { return tokens[pos]; }
+const Token& Parser::peek() const {
+    return tokens[pos];
+}
 
-const Token &Parser::peekNext() const { return isAtEnd() ? tokens[pos] : tokens[pos + 1]; }
+const Token& Parser::peekNext() const {
+    return isAtEnd() ? tokens[pos] : tokens[pos + 1];
+}
 
-const Token &Parser::previous() const { return tokens[pos - 1]; }
+const Token& Parser::previous() const {
+    return tokens[pos - 1];
+}
 
-const Token &Parser::advance() {
-    if (!isAtEnd()) pos++;
+const Token& Parser::advance() {
+    if (!isAtEnd())
+        pos++;
     return previous();
 }
 
-void register_intrinsics(SymbolTable &sym) {
+void register_intrinsics(SymbolTable& sym) {
     // void print(int)
     sym.declareFunction("print", TypeSystem::Void, {TypeSystem::Int64});
     // void print_f(float)
@@ -40,13 +52,14 @@ void register_intrinsics(SymbolTable &sym) {
 
     // Math (float -> float)
     std::vector<std::string> math_funcs = {"sqrt_f", "sin_f", "cos_f", "tan_f", "abs_f"};
-    for (const auto &name : math_funcs) {
+    for (const auto& name : math_funcs) {
         sym.declareFunction(name, TypeSystem::Float64, {TypeSystem::Float64});
     }
 }
 
 bool Parser::check(TokenType t) const {
-    if (isAtEnd()) return false;
+    if (isAtEnd())
+        return false;
     return peek().type == t;
 }
 
@@ -59,7 +72,7 @@ bool Parser::match(TokenType t) {
     return false;
 }
 
-void Parser::consume(TokenType t, const char *msg) {
+void Parser::consume(TokenType t, const char* msg) {
     if (check(t)) {
         advance();
         return;
@@ -70,7 +83,8 @@ void Parser::consume(TokenType t, const char *msg) {
 
 ExprPtr Parser::parsePrimary() {
 
-    if (match(TokenType::LITERAL_FLOAT) || match(TokenType::LITERAL_INTEGER) || match(TokenType::LITERAL_STRING)) {
+    if (match(TokenType::LITERAL_FLOAT) || match(TokenType::LITERAL_INTEGER) ||
+        match(TokenType::LITERAL_STRING)) {
         return std::make_unique<LiteralExpr>(previous());
     }
 
@@ -95,10 +109,17 @@ ExprPtr Parser::parsePrimary() {
                 returnType = sym->type;
                 paramTypes = sym->param_types;
             } else {
-                error(identifierName, "Implicit declaration of '" + identifierName.lexeme + "' is not allowed.");
+                error(identifierName,
+                      "Implicit declaration of '" + identifierName.lexeme + "' is not allowed.");
             }
 
-            return std::make_unique<FunctionCallExpr>(std::move(identifierName), std::move(args), returnType, paramTypes);
+            if (args.size() != paramTypes.size()) {
+                error(identifierName, "Expected " + std::to_string(paramTypes.size()) +
+                                          " arguments, got " + std::to_string(args.size()) + ".");
+            }
+
+            return std::make_unique<FunctionCallExpr>(std::move(identifierName), std::move(args),
+                                                      returnType, paramTypes);
         }
 
         if (match(TokenType::LEFT_SQUARE)) {
@@ -111,8 +132,10 @@ ExprPtr Parser::parsePrimary() {
                 error(identifierName, "Undefined variable '" + identifierName.lexeme + "'.");
             }
 
-            auto arrayIdent = std::make_unique<IdentifierExpr>(identifierName, sym->offset, sym->type);
-            return std::make_unique<ArrayAccessExpr>(std::move(arrayIdent), std::move(index), bracket);
+            auto arrayIdent =
+                std::make_unique<IdentifierExpr>(identifierName, sym->offset, sym->type);
+            return std::make_unique<ArrayAccessExpr>(std::move(arrayIdent), std::move(index),
+                                                     bracket);
         }
 
         if (match(TokenType::PUNCTUATION_DOT)) {
@@ -132,13 +155,15 @@ ExprPtr Parser::parsePrimary() {
                 error(identifierName, "Unknown class '" + sym->type.name + "'.");
             }
 
-            const ClassTypeInfo &classInfo = classIt->second;
+            const ClassTypeInfo& classInfo = classIt->second;
 
             if (match(TokenType::LEFT_PAREN)) {
                 std::vector<ExprPtr> args;
 
-                Token ampToken("&", identifierName.row, identifierName.column, TokenType::OPERATOR_AMPERSAND);
-                auto thisIdent = std::make_unique<IdentifierExpr>(identifierName, sym->offset, sym->type);
+                Token ampToken("&", identifierName.row, identifierName.column,
+                               TokenType::OPERATOR_AMPERSAND);
+                auto thisIdent =
+                    std::make_unique<IdentifierExpr>(identifierName, sym->offset, sym->type);
                 args.push_back(std::make_unique<UnaryExpr>(ampToken, std::move(thisIdent)));
 
                 if (!check(TokenType::RIGHT_PAREN)) {
@@ -158,7 +183,8 @@ ExprPtr Parser::parsePrimary() {
                 Token mangledToken = memberName;
                 mangledToken.lexeme = mangledName;
 
-                return std::make_unique<FunctionCallExpr>(std::move(mangledToken), std::move(args), funcSym->type, funcSym->param_types);
+                return std::make_unique<FunctionCallExpr>(std::move(mangledToken), std::move(args),
+                                                          funcSym->type, funcSym->param_types);
             }
 
             auto fieldIt = classInfo.fields.find(memberName.lexeme);
@@ -166,8 +192,10 @@ ExprPtr Parser::parsePrimary() {
                 error(memberName, "Unknown field '" + memberName.lexeme + "'.");
             }
 
-            auto objIdent = std::make_unique<IdentifierExpr>(identifierName, sym->offset, sym->type);
-            return std::make_unique<PropertyAccessExpr>(std::move(objIdent), memberName, fieldIt->second.type, fieldIt->second.offset);
+            auto objIdent =
+                std::make_unique<IdentifierExpr>(identifierName, sym->offset, sym->type);
+            return std::make_unique<PropertyAccessExpr>(
+                std::move(objIdent), memberName, fieldIt->second.type, fieldIt->second.offset);
         }
 
         auto sym = symbolTable.lookup(identifierName.lexeme);
@@ -201,8 +229,8 @@ ExprPtr Parser::parsePrimary() {
 }
 
 ExprPtr Parser::parseUnary() {
-    if (match(TokenType::OPERATOR_MINUS) || match(TokenType::EXCLAMATION) || match(TokenType::OPERATOR_AMPERSAND) ||
-        match(TokenType::OPERATOR_ASTERISK)) {
+    if (match(TokenType::OPERATOR_MINUS) || match(TokenType::EXCLAMATION) ||
+        match(TokenType::OPERATOR_AMPERSAND) || match(TokenType::OPERATOR_ASTERISK)) {
         Token op = previous();
         ExprPtr right = parseUnary();
         return std::make_unique<UnaryExpr>(op, std::move(right));
@@ -238,8 +266,8 @@ ExprPtr Parser::parseTerm() {
 ExprPtr Parser::parseComparison() {
     ExprPtr expr = parseTerm();
 
-    while (match(TokenType::OPERATOR_LESS) || match(TokenType::OPERATOR_GREATER) || match(TokenType::OPERATOR_LESS_EQUALS) ||
-           match(TokenType::OPERATOR_GREATER_EQUALS)) {
+    while (match(TokenType::OPERATOR_LESS) || match(TokenType::OPERATOR_GREATER) ||
+           match(TokenType::OPERATOR_LESS_EQUALS) || match(TokenType::OPERATOR_GREATER_EQUALS)) {
         Token op = previous();
         ExprPtr right = parseTerm();
         expr = std::make_unique<BinaryExpr>(op, std::move(expr), std::move(right));
@@ -267,26 +295,28 @@ ExprPtr Parser::parseAssignment() {
         Token equals = previous();
         ExprPtr right = parseAssignment();
 
-        if (auto *ident = dynamic_cast<IdentifierExpr *>(left.get())) {
+        if (auto* ident = dynamic_cast<IdentifierExpr*>(left.get())) {
             return std::make_unique<BinaryExpr>(equals, std::move(left), std::move(right));
         }
 
-        if (auto *unary = dynamic_cast<UnaryExpr *>(left.get())) {
+        if (auto* unary = dynamic_cast<UnaryExpr*>(left.get())) {
             if (unary->op.type == TokenType::OPERATOR_ASTERISK) {
                 return std::make_unique<BinaryExpr>(equals, std::move(left), std::move(right));
             }
         }
 
-        if (auto *arrAccess = dynamic_cast<ArrayAccessExpr *>(left.get())) {
+        if (auto* arrAccess = dynamic_cast<ArrayAccessExpr*>(left.get())) {
             return std::make_unique<BinaryExpr>(equals, std::move(left), std::move(right));
         }
 
-        if (auto *propAccess = dynamic_cast<PropertyAccessExpr *>(left.get())) {
+        if (auto* propAccess = dynamic_cast<PropertyAccessExpr*>(left.get())) {
             return std::make_unique<BinaryExpr>(equals, std::move(left), std::move(right));
         }
 
-        // throw ParseError(previous(), "Invalid assignment target. Only variables or pointer dereferences are allowed.");
-        error(previous(), "Invalid assignment target. Only variables or pointer dereferences are allowed.");
+        // throw ParseError(previous(), "Invalid assignment target. Only variables or pointer
+        // dereferences are allowed.");
+        error(previous(),
+              "Invalid assignment target. Only variables or pointer dereferences are allowed.");
     }
 
     return left;
@@ -320,10 +350,12 @@ StmtPtr Parser::parseStatement() {
         return parseFor();
     }
 
-    if (match(TokenType::KEYWORD_TYPE_FLOAT32) || match(TokenType::KEYWORD_TYPE_FLOAT64) || match(TokenType::KEYWORD_TYPE_INT8) ||
-        match(TokenType::KEYWORD_TYPE_INT16) || match(TokenType::KEYWORD_TYPE_INT32) || match(TokenType::KEYWORD_TYPE_INT64) ||
-        match(TokenType::KEYWORD_TYPE_UINT8) || match(TokenType::KEYWORD_TYPE_UINT16) || match(TokenType::KEYWORD_TYPE_UINT32) ||
-        match(TokenType::KEYWORD_TYPE_UINT64) || match(TokenType::KEYWORD_TYPE_VOID)) {
+    if (match(TokenType::KEYWORD_TYPE_FLOAT32) || match(TokenType::KEYWORD_TYPE_FLOAT64) ||
+        match(TokenType::KEYWORD_TYPE_INT8) || match(TokenType::KEYWORD_TYPE_INT16) ||
+        match(TokenType::KEYWORD_TYPE_INT32) || match(TokenType::KEYWORD_TYPE_INT64) ||
+        match(TokenType::KEYWORD_TYPE_UINT8) || match(TokenType::KEYWORD_TYPE_UINT16) ||
+        match(TokenType::KEYWORD_TYPE_UINT32) || match(TokenType::KEYWORD_TYPE_UINT64) ||
+        match(TokenType::KEYWORD_TYPE_VOID)) {
         return parseVarOrFunctionDecl();
     }
 
@@ -360,7 +392,7 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
     Type type = TypeSystem::Int64;
     try {
         type = TypeSystem::from_string(identifierTypeToken.lexeme);
-    } catch (const TypeError &e) {
+    } catch (const TypeError& e) {
         ErrorReporter::report(e);
     }
 
@@ -403,12 +435,13 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
                 Type argType = TypeSystem::Int64;
                 try {
                     argType = TypeSystem::from_string(arg_type_tok.lexeme);
-                } catch (const TypeError &e) {
+                } catch (const TypeError& e) {
                     ErrorReporter::report(e);
                 }
 
                 if (argType.kind == TypeKind::CLASS) {
-                    error(arg_type_tok, "Class parameters by value are not supported. Use pointers.");
+                    error(arg_type_tok,
+                          "Class parameters by value are not supported. Use pointers.");
                 }
 
                 if (!symbolTable.declare(arg_name_tok.lexeme, argType)) {
@@ -418,10 +451,11 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
 
                 auto sym = symbolTable.lookup(arg_name_tok.lexeme);
 
-                std::cout << "  Param: " << arg_name_tok.lexeme << " at offset " << sym->offset << std::endl;
+                std::cout << "  Param: " << arg_name_tok.lexeme << " at offset " << sym->offset
+                          << std::endl;
 
-                args.push_back(
-                    std::make_unique<FunctionParameterStmt>(std::move(arg_type_tok), std::move(arg_name_tok.lexeme), sym->offset));
+                args.push_back(std::make_unique<FunctionParameterStmt>(
+                    std::move(arg_type_tok), std::move(arg_name_tok.lexeme), sym->offset));
                 paramTypes.push_back(argType);
             } while (match(TokenType::COMMA));
         }
@@ -434,7 +468,8 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
             error(identifierName, "Function '" + identifierName.lexeme + "' already declared.");
         }
 
-        std::cout << "--- Inside Function " << identifierName.lexeme << " (Params parsed) ---" << std::endl;
+        std::cout << "--- Inside Function " << identifierName.lexeme << " (Params parsed) ---"
+                  << std::endl;
 
         consume(TokenType::RIGHT_PAREN, "Expected a ')' after function definition");
         consume(TokenType::LEFT_CURLY, "Expected function block after definition");
@@ -448,14 +483,16 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
         symbolTable.dump();
         symbolTable.exit_scope();
 
-        return std::make_unique<FunctionDeclStmt>(std::move(type), std::move(identifierName), std::move(args), std::move(block_ptr),
+        return std::make_unique<FunctionDeclStmt>(std::move(type), std::move(identifierName),
+                                                  std::move(args), std::move(block_ptr),
                                                   function_stack_size);
     }
 
     std::optional<ExprPtr> init;
     if (match(TokenType::OPERATOR_ASSIGNMENT)) {
         if (type.kind == TypeKind::CLASS) {
-            error(identifierTypeToken, "Class copy initialization is not supported. Use field assignments.");
+            error(identifierTypeToken,
+                  "Class copy initialization is not supported. Use field assignments.");
         }
         init = parseExpression();
     }
@@ -467,15 +504,18 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
     consume(TokenType::SEMICOLON, "Expected ';' after initialization.");
 
     if (!symbolTable.declare(identifierName.lexeme, type)) {
-        // throw ParseError(identifierName, "Variable '" + identifierName.lexeme + "' already declared in this scope.");
-        error(identifierName, "Variable '" + identifierName.lexeme + "' already declared in this scope.");
+        // throw ParseError(identifierName, "Variable '" + identifierName.lexeme + "' already
+        // declared in this scope.");
+        error(identifierName,
+              "Variable '" + identifierName.lexeme + "' already declared in this scope.");
     }
 
     auto sym = symbolTable.lookup(identifierName.lexeme);
 
     std::cout << "  Var: " << identifierName.lexeme << " at offset " << sym->offset << std::endl;
 
-    return std::make_unique<VariableDeclStmt>(identifierTypeToken, identifierName.lexeme, std::move(init), sym->offset, type);
+    return std::make_unique<VariableDeclStmt>(identifierTypeToken, identifierName.lexeme,
+                                              std::move(init), sym->offset, type);
 }
 
 StmtPtr Parser::parseBlock() {
@@ -509,7 +549,8 @@ StmtPtr Parser::parseIf() {
         elseBranch = parseStatement();
     }
 
-    return std::make_unique<IfStmt>(std::move(condition), std::move(thenBranch), std::move(elseBranch));
+    return std::make_unique<IfStmt>(std::move(condition), std::move(thenBranch),
+                                    std::move(elseBranch));
 }
 
 StmtPtr Parser::parseWhile() {
@@ -530,10 +571,11 @@ StmtPtr Parser::parseFor() {
     std::optional<StmtPtr> init;
 
     if (!check(TokenType::SEMICOLON)) {
-        if (match(TokenType::KEYWORD_TYPE_FLOAT32) || match(TokenType::KEYWORD_TYPE_FLOAT64) || match(TokenType::KEYWORD_TYPE_INT8) ||
-            match(TokenType::KEYWORD_TYPE_INT16) || match(TokenType::KEYWORD_TYPE_INT32) || match(TokenType::KEYWORD_TYPE_INT64) ||
-            match(TokenType::KEYWORD_TYPE_UINT8) || match(TokenType::KEYWORD_TYPE_UINT16) || match(TokenType::KEYWORD_TYPE_UINT32) ||
-            match(TokenType::KEYWORD_TYPE_UINT64)) {
+        if (match(TokenType::KEYWORD_TYPE_FLOAT32) || match(TokenType::KEYWORD_TYPE_FLOAT64) ||
+            match(TokenType::KEYWORD_TYPE_INT8) || match(TokenType::KEYWORD_TYPE_INT16) ||
+            match(TokenType::KEYWORD_TYPE_INT32) || match(TokenType::KEYWORD_TYPE_INT64) ||
+            match(TokenType::KEYWORD_TYPE_UINT8) || match(TokenType::KEYWORD_TYPE_UINT16) ||
+            match(TokenType::KEYWORD_TYPE_UINT32) || match(TokenType::KEYWORD_TYPE_UINT64)) {
             init = parseVarOrFunctionDecl();
         } else if (check(TokenType::IDENTIFIER) && class_registry.count(peek().lexeme)) {
             advance();
@@ -546,18 +588,21 @@ StmtPtr Parser::parseFor() {
     }
 
     std::optional<ExprPtr> cond;
-    if (!check(TokenType::SEMICOLON)) cond = parseExpression();
+    if (!check(TokenType::SEMICOLON))
+        cond = parseExpression();
     consume(TokenType::SEMICOLON, "Expected ';' after for condition.");
 
     std::optional<ExprPtr> post;
-    if (!check(TokenType::RIGHT_PAREN)) post = parseExpression();
+    if (!check(TokenType::RIGHT_PAREN))
+        post = parseExpression();
     consume(TokenType::RIGHT_PAREN, "Expected ')' after for clause.");
 
     StmtPtr body = parseStatement();
 
     symbolTable.exit_scope();
 
-    return std::make_unique<ForStmt>(std::move(init), std::move(cond), std::move(post), std::move(body));
+    return std::make_unique<ForStmt>(std::move(init), std::move(cond), std::move(post),
+                                     std::move(body));
 }
 
 StmtPtr Parser::parseClassDecl() {
@@ -575,7 +620,7 @@ StmtPtr Parser::parseClassDecl() {
         Type memberType = TypeSystem::Int64;
         try {
             memberType = TypeSystem::from_string(typeTok.lexeme);
-        } catch (const TypeError &e) {
+        } catch (const TypeError& e) {
             ErrorReporter::report(e);
         }
 
@@ -593,7 +638,8 @@ StmtPtr Parser::parseClassDecl() {
             }
 
             std::vector<Type> paramTypes;
-            Type thisType = TypeSystem::createPointer(Type{.name = classInfo.name, .kind = TypeKind::CLASS, .size_bytes = 0});
+            Type thisType = TypeSystem::createPointer(
+                Type{.name = classInfo.name, .kind = TypeKind::CLASS, .size_bytes = 0});
             paramTypes.push_back(thisType);
 
             if (scan_pos < tokens.size() && tokens[scan_pos].type != TokenType::RIGHT_PAREN) {
@@ -608,12 +654,13 @@ StmtPtr Parser::parseClassDecl() {
                     Type argType = TypeSystem::Int64;
                     try {
                         argType = TypeSystem::from_string(argTypeTok.lexeme);
-                    } catch (const TypeError &e) {
+                    } catch (const TypeError& e) {
                         ErrorReporter::report(e);
                     }
 
                     if (argType.kind == TypeKind::CLASS) {
-                        error(argTypeTok, "Class parameters by value are not supported. Use pointers.");
+                        error(argTypeTok,
+                              "Class parameters by value are not supported. Use pointers.");
                     }
 
                     paramTypes.push_back(argType);
@@ -643,8 +690,10 @@ StmtPtr Parser::parseClassDecl() {
             int brace_depth = 1;
             scan_pos++;
             while (scan_pos < tokens.size() && brace_depth > 0) {
-                if (tokens[scan_pos].type == TokenType::LEFT_CURLY) brace_depth++;
-                if (tokens[scan_pos].type == TokenType::RIGHT_CURLY) brace_depth--;
+                if (tokens[scan_pos].type == TokenType::LEFT_CURLY)
+                    brace_depth++;
+                if (tokens[scan_pos].type == TokenType::RIGHT_CURLY)
+                    brace_depth--;
                 scan_pos++;
             }
         } else {
@@ -661,7 +710,7 @@ StmtPtr Parser::parseClassDecl() {
         Type memberType = TypeSystem::Int64;
         try {
             memberType = TypeSystem::from_string(peek().lexeme);
-        } catch (const TypeError &e) {
+        } catch (const TypeError& e) {
             ErrorReporter::report(e);
         }
         advance();
@@ -682,7 +731,8 @@ StmtPtr Parser::parseClassDecl() {
 
             symbolTable.enter_scope();
 
-            Type thisType = TypeSystem::createPointer(Type{.name = classInfo.name, .kind = TypeKind::CLASS, .size_bytes = 0});
+            Type thisType = TypeSystem::createPointer(
+                Type{.name = classInfo.name, .kind = TypeKind::CLASS, .size_bytes = 0});
 
             if (!symbolTable.declare("this", thisType)) {
                 error(memberName, "Duplicate parameter name 'this'.");
@@ -690,8 +740,10 @@ StmtPtr Parser::parseClassDecl() {
 
             auto thisSym = symbolTable.lookup("this");
 
-            Token thisTypeToken("uint64", memberName.row, memberName.column, TokenType::KEYWORD_TYPE_UINT64);
-            args.push_back(std::make_unique<FunctionParameterStmt>(thisTypeToken, "this", thisSym->offset));
+            Token thisTypeToken("uint64", memberName.row, memberName.column,
+                                TokenType::KEYWORD_TYPE_UINT64);
+            args.push_back(
+                std::make_unique<FunctionParameterStmt>(thisTypeToken, "this", thisSym->offset));
             paramTypes.push_back(thisType);
 
             if (!check(TokenType::RIGHT_PAREN)) {
@@ -702,12 +754,13 @@ StmtPtr Parser::parseClassDecl() {
                     Type argType = TypeSystem::Int64;
                     try {
                         argType = TypeSystem::from_string(arg_type_tok.lexeme);
-                    } catch (const TypeError &e) {
+                    } catch (const TypeError& e) {
                         ErrorReporter::report(e);
                     }
 
                     if (argType.kind == TypeKind::CLASS) { // CHANGE
-                        error(arg_type_tok, "Class parameters by value are not supported. Use pointers.");
+                        error(arg_type_tok,
+                              "Class parameters by value are not supported. Use pointers.");
                     }
 
                     if (!symbolTable.declare(arg_name_tok.lexeme, argType)) {
@@ -716,7 +769,8 @@ StmtPtr Parser::parseClassDecl() {
 
                     auto sym = symbolTable.lookup(arg_name_tok.lexeme);
 
-                    args.push_back(std::make_unique<FunctionParameterStmt>(arg_type_tok, arg_name_tok.lexeme, sym->offset));
+                    args.push_back(std::make_unique<FunctionParameterStmt>(
+                        arg_type_tok, arg_name_tok.lexeme, sym->offset));
                     paramTypes.push_back(argType);
                 } while (match(TokenType::COMMA));
             }
@@ -734,8 +788,9 @@ StmtPtr Parser::parseClassDecl() {
             Token mangledToken = memberName;
             mangledToken.lexeme = mangled_name;
 
-            methods.push_back(std::make_unique<FunctionDeclStmt>(std::move(memberType), std::move(mangledToken), std::move(args),
-                                                                 std::move(block_ptr), function_stack_size));
+            methods.push_back(std::make_unique<FunctionDeclStmt>(
+                std::move(memberType), std::move(mangledToken), std::move(args),
+                std::move(block_ptr), function_stack_size));
         } else {
             if (memberType.kind == TypeKind::VOID) {
                 error(memberName, "Fields of type void are not allowed.");
@@ -760,7 +815,9 @@ StmtPtr Parser::parseClassDecl() {
     return std::make_unique<ClassDeclStmt>(className, std::move(methods));
 }
 
-ExprPtr Parser::parseExpression() { return parseAssignment(); }
+ExprPtr Parser::parseExpression() {
+    return parseAssignment();
+}
 
 Program Parser::parse() {
     Program prog;
@@ -771,7 +828,7 @@ Program Parser::parse() {
     while (!isAtEnd()) {
         try {
             prog.statements.push_back(parseStatement());
-        } catch (const ParserPanic &) {
+        } catch (const ParserPanic&) {
             synchronize();
         }
     }
@@ -781,7 +838,7 @@ Program Parser::parse() {
     return prog;
 }
 
-[[noreturn]] void Parser::error(const Token &tok, const std::string &msg) {
+[[noreturn]] void Parser::error(const Token& tok, const std::string& msg) {
     ErrorReporter::report(ParseError(tok, msg));
     throw ParserPanic(); // Throwing internal panic to unwind the stack safely
 }
@@ -790,7 +847,8 @@ void Parser::synchronize() {
     advance(); // Consume the token that caused the error
 
     while (!isAtEnd()) {
-        if (previous().type == TokenType::SEMICOLON) return;
+        if (previous().type == TokenType::SEMICOLON)
+            return;
 
         switch (peek().type) {
         case TokenType::KEYWORD_TYPE_INT64:
@@ -803,8 +861,10 @@ void Parser::synchronize() {
         case TokenType::KEYWORD_IF:
         case TokenType::KEYWORD_WHILE:
         case TokenType::KEYWORD_FOR:
-        case TokenType::KEYWORD_RETURN: return; // We found a valid boundary to resume parsing!
-        default: break;
+        case TokenType::KEYWORD_RETURN:
+            return; // We found a valid boundary to resume parsing!
+        default:
+            break;
         }
         advance();
     }

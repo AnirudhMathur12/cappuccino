@@ -4,6 +4,7 @@
 #include "AbstractSyntaxTree.h"
 #include "SymbolTable.h"
 #include "Token.h"
+
 #include <stdexcept>
 
 class ParserPanic : public std::runtime_error {
@@ -13,30 +14,30 @@ class ParserPanic : public std::runtime_error {
 
 class Parser {
   public:
-    Parser(const std::vector<Token> &tokens);
+    Parser(const std::vector<Token>& tokens);
 
     Program parse();
 
     SymbolTable symbolTable;
 
   private:
-    [[noreturn]] void error(const Token &tok, const std::string &msg);
+    [[noreturn]] void error(const Token& tok, const std::string& msg);
     void synchronize();
     bool isTypeToken(TokenType t) const;
 
-    const std::vector<Token> &tokens;
+    const std::vector<Token>& tokens;
     size_t pos = 0;
 
-    const Token &peek() const;
-    const Token &peekNext() const;
-    const Token &previous() const;
+    const Token& peek() const;
+    const Token& peekNext() const;
+    const Token& previous() const;
 
-    const Token &advance();
+    const Token& advance();
 
     bool isAtEnd() const;
     bool check(TokenType t) const;
     bool match(TokenType t);
-    void consume(TokenType t, const char *msg);
+    void consume(TokenType t, const char* msg);
 
     ExprPtr parseExpression();
     ExprPtr parsePrimary();

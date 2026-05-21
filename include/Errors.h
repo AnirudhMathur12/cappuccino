@@ -2,6 +2,7 @@
 #define CAPPUCCINO_ERRORS_H
 
 #include "Token.h"
+
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -12,12 +13,12 @@ class CompilerError : public std::runtime_error {
     int col;
     std::string phase;
 
-    CompilerError(const std::string &phase, int line, int col, const std::string &msg);
-    CompilerError(const std::string &phase, const Token &tok, const std::string &msg);
-    CompilerError(const std::string &phase, const std::string &msg);
+    CompilerError(const std::string& phase, int line, int col, const std::string& msg);
+    CompilerError(const std::string& phase, const Token& tok, const std::string& msg);
+    CompilerError(const std::string& phase, const std::string& msg);
 
   private:
-    static std::string format(const std::string &phase, int line, int col, const std::string &msg);
+    static std::string format(const std::string& phase, int line, int col, const std::string& msg);
 };
 
 class LexError : public CompilerError {
@@ -31,23 +32,23 @@ class LexError : public CompilerError {
 class ParseError : public CompilerError {
   public:
     const Token token;
-    ParseError(const Token &tok, const std::string &msg);
+    ParseError(const Token& tok, const std::string& msg);
 };
 
 class TypeError : public CompilerError {
   public:
-    TypeError(const std::string &msg);
+    TypeError(const std::string& msg);
 };
 
 class SemanticError : public CompilerError {
   public:
-    SemanticError(const std::string &msg);
-    SemanticError(const Token &tok, const std::string &msg);
+    SemanticError(const std::string& msg);
+    SemanticError(const Token& tok, const std::string& msg);
 };
 
 class ErrorReporter {
   public:
-    static void report(const std::exception &error);
+    static void report(const std::exception& error);
     static bool hasErrors();
     static void printErrors();
     static void clear();

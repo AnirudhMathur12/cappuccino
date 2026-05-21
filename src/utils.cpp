@@ -9,7 +9,7 @@
 #include <optional>
 #include <sstream>
 
-std::optional<std::string> read_file(const std::string &file_name) {
+std::optional<std::string> read_file(const std::string& file_name) {
     std::ifstream file_stream;
     file_stream.open(file_name);
 
@@ -25,7 +25,7 @@ std::optional<std::string> read_file(const std::string &file_name) {
     return content;
 }
 
-std::pair<uint32_t, int> decode_utf8(const std::string &src, size_t pos) {
+std::pair<uint32_t, int> decode_utf8(const std::string& src, size_t pos) {
     unsigned char c = src[pos];
 
     if (c < 0x80) // Single byte (ASCII)
@@ -35,11 +35,14 @@ std::pair<uint32_t, int> decode_utf8(const std::string &src, size_t pos) {
     else if ((c & 0xF0) == 0xE0) // Three bytes
         return {((c & 0x0F) << 12) | ((src[pos + 1] & 0x3F) << 6) | (src[pos + 2] & 0x3F), 3};
     else if ((c & 0xF8) == 0xF0) // Four bytes
-        return {((c & 0x07) << 18) | ((src[pos + 1] & 0x3F) << 12) | ((src[pos + 2] & 0x3F) << 6) | (src[pos + 3] & 0x3F), 4};
+        return {((c & 0x07) << 18) | ((src[pos + 1] & 0x3F) << 12) | ((src[pos + 2] & 0x3F) << 6) |
+                    (src[pos + 3] & 0x3F),
+                4};
 
     return {c, 1}; // Invalid byte, treat as single
 }
 
-std::string mangle_method(const std::string &class_name, const std::string &method_name) {
-    return "ZN" + std::to_string(class_name.length()) + class_name + std::to_string(method_name.length()) + method_name + "E";
+std::string mangle_method(const std::string& class_name, const std::string& method_name) {
+    return "ZN" + std::to_string(class_name.length()) + class_name +
+           std::to_string(method_name.length()) + method_name + "E";
 }
