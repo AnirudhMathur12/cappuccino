@@ -1,4 +1,5 @@
 #include "Type.h"
+#include "Visitor.h"
 
 #include <cstdint>
 #include <memory>
@@ -6,7 +7,7 @@
 #include <variant>
 #include <vector>
 
-enum class OPCodes {
+enum class OPCode {
     // Memory and Transfer
     LOAD_CONST,
     LOAD_LOCAL,
@@ -84,15 +85,25 @@ using OperandValue = std::variant<VirtualReg, uint64_t, double, std::string>;
 
 struct Operand {
     OperandValue val;
+
+    Operand(VirtualReg reg) : val(reg) {}
+    Operand(uint64_t i) : val(i) {}
+    Operand(double d) : val(d) {}
+    Operand(std::string s) : val(std::move(s)) {}
 };
 
 class Instruction {
-    OPCodes opc;
+    OPCode opc;
     std::optional<VirtualReg> destination;
-    std::vector<OperandValue> sources;
+    std::vector<Operand> sources;
+
+  public:
+    Instruction(OPCode op, std::optional<VirtualReg> dest, std::vector<Operand> srcs)
+        : opc(op), destination(std::move(dest)), sources(std::move(srcs)) {}
 };
 
 class Block {
+  public:
     std::string identifier;
     std::vector<Instruction> instruction_list;
 
@@ -102,6 +113,7 @@ class Block {
 };
 
 class IRFunction {
+  public:
     std::string func_name;
     Type ret_type;
 
@@ -112,4 +124,38 @@ class IRFunction {
     unsigned int next_vreg_id;
 
     VirtualReg allocate_vreg();
+};
+
+class IRGenerator : public Visitor {
+    std::vector<std::unique_ptr<IRFunction>> program;
+    IRFunction* current_function;
+    Block* current_block;
+    std::optional<VirtualReg> current_result;
+
+  public:
+    // Expressions
+    void visitLiteralExpr(const LiteralExpr* expr) override;
+    void visitIdentifierExpr(const IdentifierExpr* expr) override;
+    void visitUnaryExpr(const UnaryExpr* expr) override;
+    void visitBinaryExpr(const BinaryExpr* expr) override;
+    void visitGroupingExpr(const GroupingExpr* expr) override;
+    void visitFunctionCallExpr(const FunctionCallExpr* expr) override;
+    void visitArrayAccessExpr(const ArrayAccessExpr* expr) override;
+    void visitArrayLiteralExpr(const ArrayLiteralExpr* expr) override;
+    void visitPropertyAccessExpr(const PropertyAccessExpr* expr) override;
+
+    // Statements
+    void visitExprStmt(const ExprStmt* stmt) override;
+    void visitVariableDeclStmt(const VariableDeclStmt* stmt) override;
+    void visitBlockStmt(const BlockStmt* stmt) override;
+    void visitIfStmt(const IfStmt* stmt) override;
+    void visitWhileStmt(const WhileStmt* stmt) override;
+    void visitForStmt(const ForStmt* stmt) override;
+    void visitReturnStmt(const ReturnStmt* stmt) override;
+    void visitFunctionParameterStmt(const FunctionParameterStmt* stmt) override;
+    void visitFunctionDeclStmt(const FunctionDeclStmt* stmt) override;
+    void visitClassDeclStmt(const ClassDeclStmt* stmt) override;
+
+    // Helper
+    void emit(OPCode opc, std::optional<VirtualReg> destination, std::vector<Operand> sources);
 };
