@@ -1,3 +1,6 @@
+#include <fstream>
+#include <iostream>
+
 #include "AbstractSyntaxTree.h"
 #include "CodeGen.h"
 #include "DebugVisitor.h"
@@ -7,17 +10,13 @@
 #include "utils.h"
 #include "version.h"
 
-#include <fstream>
-#include <iostream>
-
 bool show_tokens = false, show_ast = false;
 bool stop_at_tokens = false, stop_at_ast = false;
 std::string output_name = "a.out";
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <file.capp> [-o <output_binary>] [--tokens] [--ast]"
-                  << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <file.capp> [-o <output_binary>] [--tokens] [--ast]" << std::endl;
         return 1;
     }
 
@@ -78,13 +77,12 @@ int main(int argc, char* argv[]) {
     }
 
     if (show_tokens) {
-        for (Token& token : tokens) {
+        for (Token &token : tokens) {
             std::cout << token << std::endl;
         }
     }
 
-    if (stop_at_tokens)
-        return 0;
+    if (stop_at_tokens) return 0;
 
     Parser p(tokens);
     Program prog = p.parse();
@@ -97,11 +95,10 @@ int main(int argc, char* argv[]) {
     if (show_ast) {
         DebugVisitor debugger;
         std::cout << "Program\n";
-        for (const auto& stmt : prog.statements) {
+        for (const auto &stmt : prog.statements) {
             stmt->accept(debugger);
         }
-        if (stop_at_ast)
-            return 0;
+        if (stop_at_ast) return 0;
     }
 
     try {
@@ -113,10 +110,10 @@ int main(int argc, char* argv[]) {
         CodeGen generator(prog, asmFile);
         generator.generate();
         asmFile.close();
-    } catch (const CompilerError& e) {
+    } catch (const CompilerError &e) {
         std::cerr << "\n" << e.what() << "\n";
         return 1;
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
         std::cerr << "\n\033[1;31m[Internal Compiler Bug]\033[0m: " << e.what() << "\n";
         return 1;
     }

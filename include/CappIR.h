@@ -74,8 +74,11 @@ enum class OPCode {
     BOUNDS_CHECK
 };
 
+enum class IRType { INT, FLOAT, POINTER };
+
 struct VirtualReg {
     uint32_t id;
+    IRType irt;
     VirtualReg(uint32_t p_id) : id(p_id) {}
     bool operator==(const VirtualReg&) const = default;
 };
@@ -132,10 +135,16 @@ class IRGenerator : public Visitor {
     Block* current_block;
     std::optional<VirtualReg> current_result;
 
+    int block_count = 0;
+
+    // Helper
+    void emit(OPCode opc, std::optional<VirtualReg> destination, std::vector<Operand> sources);
+    Block* createBlock(const std::string& prefix);
+
   public:
     // Expressions
-    void visitLiteralExpr(const LiteralExpr* expr) override;
-    void visitIdentifierExpr(const IdentifierExpr* expr) override;
+    void visitLiteralExpr(const LiteralExpr* expr) override;       //
+    void visitIdentifierExpr(const IdentifierExpr* expr) override; //
     void visitUnaryExpr(const UnaryExpr* expr) override;
     void visitBinaryExpr(const BinaryExpr* expr) override;
     void visitGroupingExpr(const GroupingExpr* expr) override;
@@ -155,7 +164,4 @@ class IRGenerator : public Visitor {
     void visitFunctionParameterStmt(const FunctionParameterStmt* stmt) override;
     void visitFunctionDeclStmt(const FunctionDeclStmt* stmt) override;
     void visitClassDeclStmt(const ClassDeclStmt* stmt) override;
-
-    // Helper
-    void emit(OPCode opc, std::optional<VirtualReg> destination, std::vector<Operand> sources);
 };
