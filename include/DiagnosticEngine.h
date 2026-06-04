@@ -1,3 +1,6 @@
+#ifndef DIAGNOSTICENGINE_H_
+#define DIAGNOSTICENGINE_H_
+
 #include <string>
 #include <vector>
 
@@ -20,3 +23,4 @@ class DiagnosticEngine {
     bool hasErrors();
     void printDiagnostics();
 };
+#endif

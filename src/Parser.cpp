@@ -13,7 +13,8 @@
 #include <utility>
 #include <vector>
 
-Parser::Parser(const std::vector<Token>& p_tokens) : tokens(p_tokens) {}
+Parser::Parser(const std::vector<Token>& p_tokens, CompilerContext& p_ctx)
+    : tokens(p_tokens), ctx(p_ctx) {}
 
 bool Parser::isAtEnd() const {
     return peek().type == TokenType::TOKEN_EOF;

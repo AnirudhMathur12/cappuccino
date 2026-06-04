@@ -4,6 +4,9 @@
 
 #ifndef CAPPUCCINO_TOKEN_H
 #define CAPPUCCINO_TOKEN_H
+
+#include "CompilerContext.h"
+
 #include <cstdint>
 #include <iomanip>
 #include <iostream>
@@ -96,11 +99,13 @@ std::ostream& operator<<(std::ostream& os, const Token& tok);
 
 class Tokenizer {
   public:
-    Tokenizer(std::string& p_src) : src(p_src) {};
+    Tokenizer(std::string& p_src, CompilerContext& p_ctx) : src(p_src), ctx(p_ctx) {};
 
     std::vector<Token> tokenize();
 
   private:
+    CompilerContext ctx;
+
     std::string src;
     size_t start = 0;
     size_t current = 0;

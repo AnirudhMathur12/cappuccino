@@ -2,6 +2,7 @@
 #define CAPPUCCINO_PARSER_H
 
 #include "AbstractSyntaxTree.h"
+#include "CompilerContext.h"
 #include "SymbolTable.h"
 #include "Token.h"
 
@@ -14,13 +15,15 @@ class ParserPanic : public std::runtime_error {
 
 class Parser {
   public:
-    Parser(const std::vector<Token>& tokens);
+    Parser(const std::vector<Token>& tokens, CompilerContext& p_ctx);
 
     Program parse();
 
     SymbolTable symbolTable;
 
   private:
+    CompilerContext& ctx;
+
     [[noreturn]] void error(const Token& tok, const std::string& msg);
     void synchronize();
     bool isTypeToken(TokenType t) const;
