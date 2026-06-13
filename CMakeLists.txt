@@ -80,6 +80,7 @@ set(SOURCES
     src/SymbolTable.cpp
     src/DebugVisitor.cpp
     src/CompilerContext.cpp
+    src/ArenaAllocator.cpp
 )
 
 set(HEADERS
@@ -94,6 +95,7 @@ set(HEADERS
         include/DebugVisitor.h
         include/Visitor.h
         include/CompilerContext.h
+        include/ArenaAllocator.h
 )
 
 configure_file(

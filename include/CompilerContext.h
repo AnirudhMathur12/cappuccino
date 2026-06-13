@@ -1,6 +1,8 @@
 #ifndef COMPILERCONTEXT_H_
 #define COMPILERCONTEXT_H_
 
+#include "ArenaAllocator.h"
+
 #include <string>
 #include <vector>
 
@@ -60,6 +62,7 @@ class CompilerContext {
   public:
     CompilerOptions options;
     DiagnosticEngine de;
+    ArenaAllocator aa;
 };
 
 #endif
