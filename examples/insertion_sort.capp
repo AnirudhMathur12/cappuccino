@@ -1,0 +1,33 @@
+uint8 main() {
+    int64[6] arr = {12, 11, 13, 5, 6, 7};
+    int64 n = 6;
+
+    print_s("Unsorted array:");
+    for (int64 i = 0; i < n; i = i + 1) {
+        print(arr[i]);
+    }
+
+    // Insertion Sort Logic
+    for (int64 i = 1; i < n; i = i + 1) {
+        int64 temp = arr[i];
+        int64 pos = i;
+
+        // Shift elements to the right to make room
+        for (int64 j = i; j > 0; j = j - 1) {
+            if (arr[j - 1] > temp) {
+                arr[j] = arr[j - 1];
+                pos = j - 1;
+            }
+        }
+        
+        // Place the element in its correct position
+        arr[pos] = temp;
+    }
+
+    print_s("Sorted array:");
+    for (int64 i = 0; i < n; i = i + 1) {
+        print(arr[i]);
+    }
+
+    return 0;
+}
