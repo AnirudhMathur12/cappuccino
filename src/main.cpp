@@ -2,7 +2,6 @@
 #include "CodeGen.h"
 #include "CompilerContext.h"
 #include "DebugVisitor.h"
-#include "Errors.h"
 #include "Parser.h"
 #include "Token.h"
 #include "utils.h"
@@ -70,8 +69,8 @@ int main(int argc, char* argv[]) {
     Tokenizer t(file_content.value(), ctx);
     std::vector<Token> tokens = t.tokenize();
 
-    if (ErrorReporter::hasErrors()) {
-        ErrorReporter::printErrors();
+    if (ctx.de.hasErrors()) {
+        ctx.de.printDiagnostics();
         return 1;
     }
 
@@ -86,8 +85,8 @@ int main(int argc, char* argv[]) {
     Parser p(tokens, ctx);
     Program prog = p.parse();
 
-    if (ErrorReporter::hasErrors()) {
-        ErrorReporter::printErrors();
+    if (ctx.de.hasErrors()) {
+        ctx.de.printDiagnostics();
         return 1;
     }
 
@@ -107,14 +106,16 @@ int main(int argc, char* argv[]) {
             std::cerr << "Failed to write assembly file." << std::endl;
             return 1;
         }
-        CodeGen generator(prog, asmFile);
+        CodeGen generator(prog, asmFile, ctx);
         generator.generate();
         asmFile.close();
-    } catch (const CompilerError& e) {
-        std::cerr << "\n" << e.what() << "\n";
-        return 1;
     } catch (const std::exception& e) {
         std::cerr << "\n\033[1;31m[Internal Compiler Bug]\033[0m: " << e.what() << "\n";
+        return 1;
+    }
+
+    if (ctx.de.hasErrors()) {
+        ctx.de.printDiagnostics();
         return 1;
     }
 

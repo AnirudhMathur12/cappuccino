@@ -104,7 +104,7 @@ class Tokenizer {
     std::vector<Token> tokenize();
 
   private:
-    CompilerContext ctx;
+    CompilerContext& ctx;
 
     std::string src;
     size_t start = 0;

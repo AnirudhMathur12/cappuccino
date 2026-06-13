@@ -1,7 +1,6 @@
 #include "Type.h"
 
-#include "Errors.h"
-
+#include <optional>
 #include <string>
 #include <unordered_map>
 
@@ -105,7 +104,7 @@ const Type TypeSystem::StringLiteral = {.name = "string",
                                         .is_float = false,
                                         .baseType = std::make_shared<Type>(TypeSystem::UInt8)};
 
-Type TypeSystem::from_string(const std::string& typeName) {
+std::optional<Type> TypeSystem::from_string(const std::string& typeName) {
     // Signed Ints
     if (typeName == "int64")
         return Int64;
@@ -147,8 +146,7 @@ Type TypeSystem::from_string(const std::string& typeName) {
                     .is_float = false};
     }
 
-    throw TypeError("Unknown type '" + typeName + "'");
-    // return Int64;
+    return std::nullopt;
 }
 
 Type TypeSystem::createArray(const Type& base, int length) {

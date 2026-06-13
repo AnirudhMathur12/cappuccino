@@ -65,7 +65,7 @@ class TypeSystem {
     // Class
     static const Type Class;
 
-    static Type from_string(const std::string& typeName);
+    static std::optional<Type> from_string(const std::string& typeName);
     static Type createArray(const Type& base, int length);
     static Type createPointer(const Type& base);
 };

@@ -1,21 +1,18 @@
 #include "CodeGen.h"
 
 #include "AbstractSyntaxTree.h"
-#include "Errors.h"
 #include "Token.h"
 #include "Type.h"
 #include "capp_stdlib.h"
 
-#include <cmath>
 #include <cstdint>
 #include <iomanip>
 #include <sstream>
-#include <stdexcept>
 #include <string>
 #include <variant>
 
-CodeGen::CodeGen(const Program& prog, std::ostream& output)
-    : prog(prog), out(output), current_type(TypeSystem::Int32) {}
+CodeGen::CodeGen(const Program& prog, std::ostream& output, CompilerContext& p_ctx)
+    : prog(prog), out(output), current_type(TypeSystem::Int32), ctx(p_ctx) {}
 
 std::string CodeGen::nextLabel(const std::string& prefix) {
     return prefix + "_" + std::to_string(label_counter++);
@@ -46,7 +43,8 @@ void CodeGen::visitArrayAccessExpr(const ArrayAccessExpr* expr) {
 
     auto* ident = dynamic_cast<const IdentifierExpr*>(expr->array.get());
     if (!ident)
-        throw SemanticError("Only direct array identifiers are supported in MVP.");
+        ctx.de.report(DiagnosticLevel::ERROR, "Only direct array identifiers are supported in MVP.",
+                      0, 0);
 
     Type arrayType = ident->type;
     Type elementType = *arrayType.baseType;
@@ -101,16 +99,19 @@ void CodeGen::visitArrayAccessExpr(const ArrayAccessExpr* expr) {
 }
 
 void CodeGen::visitArrayLiteralExpr(const ArrayLiteralExpr* expr) {
-    throw SemanticError("Array literals are currently only supported in variable declarations.");
+    ctx.de.report(DiagnosticLevel::ERROR,
+                  "Array literals are currently only supported in variable declarations.", 0, 0);
 }
 
 void CodeGen::visitPropertyAccessExpr(const PropertyAccessExpr* expr) {
     if (expr->type.kind == TypeKind::CLASS) {
-        throw SemanticError("Class field access by value is not supported.");
+        ctx.de.report(DiagnosticLevel::ERROR, "Class field access by value is not supported.", 0,
+                      0);
     }
     auto* ident = dynamic_cast<const IdentifierExpr*>(expr->object.get());
     if (!ident) {
-        throw SemanticError("Only direct object identifiers are supported for field access.");
+        ctx.de.report(DiagnosticLevel::ERROR,
+                      "Only direct object identifiers are supported for field access.", 0, 0);
     }
 
     // Base address of object
@@ -210,10 +211,13 @@ void CodeGen::visitVariableDeclStmt(const VariableDeclStmt* stmt) {
             Type varType = stmt->type;
 
             if (varType.kind != TypeKind::ARRAY) {
-                throw SemanticError("Cannot assign an array literal to a non-array type.");
+
+                ctx.de.report(DiagnosticLevel::ERROR,
+                              "Cannot assign an array literal to a non-array type.", 0, 0);
             }
             if (arrayLit->elements.size() > varType.array_length) {
-                throw SemanticError("Too many initializers for array bounds.");
+                ctx.de.report(DiagnosticLevel::ERROR, "Too many initializers for array bounds.", 0,
+                              0);
             }
 
             Type elementType = *varType.baseType;
@@ -263,7 +267,7 @@ void CodeGen::visitVariableDeclStmt(const VariableDeclStmt* stmt) {
 
         genExpr(stmt->initializer.value().get());
 
-        Type varType = TypeSystem::from_string(stmt->type_token.lexeme);
+        Type varType = TypeSystem::from_string(stmt->type_token.lexeme).value();
 
         if (varType.is_float) {
             // Int -> Float
@@ -421,7 +425,7 @@ void CodeGen::visitFunctionDeclStmt(const FunctionDeclStmt* stmt) {
 void CodeGen::visitFunctionParameterStmt(const FunctionParameterStmt* stmt) {
     // This method is called via genStmt loop in visitFunctionDeclStmt
     int offset = stmt->offset;
-    Type param_type = TypeSystem::from_string(stmt->type_token.lexeme);
+    Type param_type = TypeSystem::from_string(stmt->type_token.lexeme).value();
 
     // Limit to 8 registers for arguments
     if (current_param_index > 7)
@@ -487,7 +491,8 @@ void CodeGen::visitIdentifierExpr(const IdentifierExpr* expr) {
     current_type = expr->type;
 
     if (current_type.kind == TypeKind::CLASS) {
-        throw SemanticError("Class values cannot be used directly, Use field access or pointers. ");
+        ctx.de.report(DiagnosticLevel::ERROR,
+                      "Class values cannot be used directly, Use field access or pointers. ", 0, 0);
     }
 
     if (current_type.is_float) {
@@ -558,7 +563,8 @@ void CodeGen::visitUnaryExpr(const UnaryExpr* expr) {
         break;
     case TokenType::OPERATOR_ASTERISK: {
         if (current_type.kind != TypeKind::POINTER) {
-            throw SemanticError("Semantic Error: Cannot dereference a non-pointer type.");
+            ctx.de.report(DiagnosticLevel::ERROR,
+                          "Semantic Error: Cannot dereference a non-pointer type.", 0, 0);
         }
         current_type = *current_type.baseType;
 
@@ -590,7 +596,8 @@ void CodeGen::visitUnaryExpr(const UnaryExpr* expr) {
     case TokenType::OPERATOR_AMPERSAND: {
         auto* ident = dynamic_cast<IdentifierExpr*>(expr->right.get());
         if (!ident) {
-            throw SemanticError("Semantic Error: '&' operator requires a variable identifier.");
+            ctx.de.report(DiagnosticLevel::ERROR,
+                          "Semantic Error: '&' operator requires a variable identifier.", 0, 0);
         }
 
         emit("sub x0, x29, #" + std::to_string(ident->offset));
@@ -599,7 +606,7 @@ void CodeGen::visitUnaryExpr(const UnaryExpr* expr) {
         break;
     }
     default:
-        throw SemanticError("Unknown unary operator");
+        ctx.de.report(DiagnosticLevel::ERROR, "Unknown unary operator", 0, 0);
     }
 }
 
@@ -843,7 +850,8 @@ void CodeGen::visitAssignment(const BinaryExpr* expr) {
         Type varType = ident->type;
 
         if (varType.kind == TypeKind::CLASS) {
-            throw SemanticError("Class assignment by value is not supported.");
+            ctx.de.report(DiagnosticLevel::ERROR, "Class assignment by value is not supported.", 0,
+                          0);
         }
 
         // Implicit Casting (RHS -> Variable Type)
@@ -895,15 +903,17 @@ void CodeGen::visitAssignment(const BinaryExpr* expr) {
     //  Pointer Dereference Assignment (e.g., *ptr = 5)
     else if (auto* unary = dynamic_cast<const UnaryExpr*>(expr->left.get())) {
         if (unary->op.type != TokenType::OPERATOR_ASTERISK) {
-            throw SemanticError(
-                "Invalid assignment target. Expected variable or pointer dereference.");
+            ctx.de.report(DiagnosticLevel::ERROR,
+                          "Invalid assignment target. Expected variable or pointer dereference.", 0,
+                          0);
         }
 
         // Evaluate the Pointer (LHS) to get the target memory address
         genExpr(unary->right.get());
 
         if (current_type.kind != TypeKind::POINTER) {
-            throw SemanticError("Semantic Error: Assigning to a non-pointer dereference.");
+            ctx.de.report(DiagnosticLevel::ERROR,
+                          "Semantic Error: Assigning to a non-pointer dereference.", 0, 0);
         }
 
         Type targetType = *current_type.baseType; // The type the pointer points to
@@ -1041,8 +1051,9 @@ void CodeGen::visitAssignment(const BinaryExpr* expr) {
 
         auto* ident = dynamic_cast<const IdentifierExpr*>(prop->object.get());
         if (!ident) {
-            throw SemanticError(
-                "Only direct object identifiers are supported for field assignment.");
+            ctx.de.report(DiagnosticLevel::ERROR,
+                          "Only direct object identifiers are supported for field assignment.", 0,
+                          0);
         }
 
         emit("sub x2, x29, #" + std::to_string(ident->offset));
@@ -1058,7 +1069,9 @@ void CodeGen::visitAssignment(const BinaryExpr* expr) {
         Type targetType = prop->type;
 
         if (targetType.kind == TypeKind::CLASS) {
-            throw SemanticError("Class field assignment by value is not supported.");
+            ctx.de.report(DiagnosticLevel::ERROR,
+                          "Only direct object identifiers are supported for field assignment.", 0,
+                          0);
         }
 
         if (targetType.is_float) {
@@ -1097,7 +1110,7 @@ void CodeGen::visitAssignment(const BinaryExpr* expr) {
 
         current_type = targetType;
     } else {
-        throw SemanticError("Invalid assignment target.");
+        ctx.de.report(DiagnosticLevel::ERROR, "Invalid assignment target.", 0, 0);
     }
 }
 

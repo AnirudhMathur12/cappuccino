@@ -4,7 +4,6 @@
 
 #include "Token.h"
 
-#include "Errors.h"
 #include "utils.h"
 
 #include <cstdint>
@@ -254,8 +253,8 @@ std::vector<Token> Tokenizer::tokenize() {
                 for (int i = 1; i < byte_count; i++)
                     advance();
 
-                // throw LexError(line, column, codepoint);
-                ErrorReporter::report(LexError(line, column, codepoint));
+                ctx.de.report(DiagnosticLevel::ERROR,
+                              "Unexpected character U+" + to_unicode(codepoint), column, line);
             }
         }
     }
@@ -269,7 +268,7 @@ Token Tokenizer::string() {
         advance();
 
     if (isAtEnd() || peek() == '\n') {
-        ErrorReporter::report(CompilerError("Lexer", line, column, "Unterminated stirng literal."));
+        ctx.de.report(DiagnosticLevel::ERROR, "Unterminated string literal.", column, line);
         std::string value = src.substr(start, current - start);
         value.push_back('"');
         return Token(value, line, column, TokenType::LITERAL_STRING);

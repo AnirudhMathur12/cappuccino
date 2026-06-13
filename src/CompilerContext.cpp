@@ -1,4 +1,4 @@
-#include "DiagnosticEngine.h"
+#include "CompilerContext.h"
 
 #include <iostream>
 
