@@ -46,3 +46,9 @@ std::string mangle_method(const std::string& class_name, const std::string& meth
     return "ZN" + std::to_string(class_name.length()) + class_name +
            std::to_string(method_name.length()) + method_name + "E";
 }
+
+std::string to_unicode(uint32_t codepoint) {
+    std::ostringstream oss;
+    oss << std::uppercase << std::hex << std::setw(4) << std::setfill('0') << codepoint;
+    return oss.str();
+}

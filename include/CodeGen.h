@@ -11,7 +11,7 @@
 
 class CodeGen : public Visitor {
   public:
-    CodeGen(const Program& prog, std::ostream& output);
+    CodeGen(const Program& prog, std::ostream& output, CompilerContext& p_ctx);
 
     void generate();
 
@@ -39,6 +39,9 @@ class CodeGen : public Visitor {
 
   private:
     const Program& prog;
+
+    CompilerContext& ctx;
+
     std::ostream& out;
     int label_counter = 0;
     std::vector<std::pair<std::string, std::string>> string_literals;

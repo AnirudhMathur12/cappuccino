@@ -79,7 +79,7 @@ set(SOURCES
     src/Type.cpp
     src/SymbolTable.cpp
     src/DebugVisitor.cpp
-    src/Errors.cpp
+    src/CompilerContext.cpp
 )
 
 set(HEADERS
@@ -93,6 +93,7 @@ set(HEADERS
         include/SymbolTable.h
         include/DebugVisitor.h
         include/Visitor.h
+        include/CompilerContext.h
 )
 
 configure_file(

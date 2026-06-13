@@ -1,7 +1,7 @@
 #include "AbstractSyntaxTree.h"
 #include "CodeGen.h"
+#include "CompilerContext.h"
 #include "DebugVisitor.h"
-#include "Errors.h"
 #include "Parser.h"
 #include "Token.h"
 #include "utils.h"
@@ -10,29 +10,26 @@
 #include <fstream>
 #include <iostream>
 
-bool show_tokens = false, show_ast = false;
-bool stop_at_tokens = false, stop_at_ast = false;
-std::string output_name = "a.out";
-
 int main(int argc, char* argv[]) {
+
+    CompilerContext ctx;
+
     if (argc < 2) {
         std::cerr << "Usage: " << argv[0] << " <file.capp> [-o <output_binary>] [--tokens] [--ast]"
                   << std::endl;
         return 1;
     }
 
-    std::vector<std::string> source_files;
-
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
         if (arg == "--tokens") {
-            show_tokens = true;
+            ctx.options.show_tokens = true;
         } else if (arg == "--till_tokens") {
-            stop_at_tokens = true;
+            ctx.options.stop_at_tokens = true;
         } else if (arg == "--ast") {
-            show_ast = true;
+            ctx.options.show_ast = true;
         } else if (arg == "--till_ast") {
-            stop_at_ast = true;
+            ctx.options.stop_at_ast = true;
         } else if (arg == "--version" || arg == "-v") {
             std::cout << "Cappuccino Compiler v" << VERSION_STRING << std::endl;
             std::cout << PROJECT_DESCRIPTION << std::endl;
@@ -41,22 +38,22 @@ int main(int argc, char* argv[]) {
             return 0;
         } else if (arg == "-o") {
             if (i + 1 < argc) {
-                output_name = argv[++i];
+                ctx.options.output_name = argv[++i];
             } else {
                 std::cerr << "Error: -o requires a filename argument." << std::endl;
                 return 1;
             }
         } else {
-            source_files.push_back(arg);
+            ctx.options.source_files.push_back(arg);
         }
     }
 
-    if (source_files.empty()) {
+    if (ctx.options.source_files.empty()) {
         std::cerr << "Error: No input files provided." << std::endl;
         return 1;
     }
 
-    std::string source_path = source_files[0];
+    std::string source_path = ctx.options.source_files[0];
 
     if (source_path.length() < 5 || source_path.substr(source_path.length() - 5) != ".capp") {
         std::cerr << "Error: Input file must have a .capp extension." << std::endl;
@@ -69,38 +66,37 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    Tokenizer t(file_content.value());
+    Tokenizer t(file_content.value(), ctx);
     std::vector<Token> tokens = t.tokenize();
 
-    if (ErrorReporter::hasErrors()) {
-        ErrorReporter::printErrors();
+    if (ctx.de.hasErrors()) {
+        ctx.de.printDiagnostics();
         return 1;
     }
 
-    if (show_tokens) {
-        for (Token& token : tokens) {
+    if (ctx.options.show_tokens) {
+        for (Token& token : tokens)
             std::cout << token << std::endl;
-        }
     }
 
-    if (stop_at_tokens)
+    if (ctx.options.stop_at_tokens)
         return 0;
 
-    Parser p(tokens);
+    Parser p(tokens, ctx);
     Program prog = p.parse();
 
-    if (ErrorReporter::hasErrors()) {
-        ErrorReporter::printErrors();
+    if (ctx.de.hasErrors()) {
+        ctx.de.printDiagnostics();
         return 1;
     }
 
-    if (show_ast) {
+    if (ctx.options.show_ast) {
         DebugVisitor debugger;
         std::cout << "Program\n";
         for (const auto& stmt : prog.statements) {
             stmt->accept(debugger);
         }
-        if (stop_at_ast)
+        if (ctx.options.stop_at_ast)
             return 0;
     }
 
@@ -110,14 +106,16 @@ int main(int argc, char* argv[]) {
             std::cerr << "Failed to write assembly file." << std::endl;
             return 1;
         }
-        CodeGen generator(prog, asmFile);
+        CodeGen generator(prog, asmFile, ctx);
         generator.generate();
         asmFile.close();
-    } catch (const CompilerError& e) {
-        std::cerr << "\n" << e.what() << "\n";
-        return 1;
     } catch (const std::exception& e) {
         std::cerr << "\n\033[1;31m[Internal Compiler Bug]\033[0m: " << e.what() << "\n";
+        return 1;
+    }
+
+    if (ctx.de.hasErrors()) {
+        ctx.de.printDiagnostics();
         return 1;
     }
 
@@ -130,7 +128,7 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << "Linking..." << std::endl;
-    std::string ld_cmd = "ld -o " + output_name +
+    std::string ld_cmd = "ld -o " + ctx.options.output_name +
                          " output.o -lSystem -syslibroot `xcrun -sdk macosx "
                          "--show-sdk-path` -e  _main -arch arm64";
     int ld_ret = std::system(ld_cmd.c_str());

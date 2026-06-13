@@ -1,7 +1,6 @@
 #include "Parser.h"
 
 #include "AbstractSyntaxTree.h"
-#include "Errors.h"
 #include "Token.h"
 #include "Type.h"
 #include "utils.h"
@@ -13,7 +12,8 @@
 #include <utility>
 #include <vector>
 
-Parser::Parser(const std::vector<Token>& p_tokens) : tokens(p_tokens) {}
+Parser::Parser(const std::vector<Token>& p_tokens, CompilerContext& p_ctx)
+    : tokens(p_tokens), ctx(p_ctx) {}
 
 bool Parser::isAtEnd() const {
     return peek().type == TokenType::TOKEN_EOF;
@@ -389,12 +389,11 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
     bool isPtr = false;
     Token identifierTypeToken = previous();
 
-    Type type = TypeSystem::Int64;
-    try {
-        type = TypeSystem::from_string(identifierTypeToken.lexeme);
-    } catch (const TypeError& e) {
-        ErrorReporter::report(e);
+    auto typeOpt = TypeSystem::from_string(identifierTypeToken.lexeme);
+    if (!typeOpt.has_value()) {
+        error(identifierTypeToken, "Unknown type '" + identifierTypeToken.lexeme + "'");
     }
+    Type type = typeOpt.value();
 
     if (match(TokenType::LEFT_SQUARE)) {
         if (type.kind == TypeKind::VOID) {
@@ -432,12 +431,11 @@ StmtPtr Parser::parseVarOrFunctionDecl() {
                 Token arg_type_tok = advance();
                 Token arg_name_tok = advance();
 
-                Type argType = TypeSystem::Int64;
-                try {
-                    argType = TypeSystem::from_string(arg_type_tok.lexeme);
-                } catch (const TypeError& e) {
-                    ErrorReporter::report(e);
+                auto typeOpt = TypeSystem::from_string(identifierTypeToken.lexeme);
+                if (!typeOpt.has_value()) {
+                    error(identifierTypeToken, "Unknown type '" + identifierTypeToken.lexeme + "'");
                 }
+                Type argType = typeOpt.value();
 
                 if (argType.kind == TypeKind::CLASS) {
                     error(arg_type_tok,
@@ -617,12 +615,11 @@ StmtPtr Parser::parseClassDecl() {
     while (scan_pos < tokens.size() && tokens[scan_pos].type != TokenType::RIGHT_CURLY) {
         Token typeTok = tokens[scan_pos++];
 
-        Type memberType = TypeSystem::Int64;
-        try {
-            memberType = TypeSystem::from_string(typeTok.lexeme);
-        } catch (const TypeError& e) {
-            ErrorReporter::report(e);
+        auto typeOpt = TypeSystem::from_string(typeTok.lexeme);
+        if (!typeOpt.has_value()) {
+            error(typeTok, "Unknown type '" + typeTok.lexeme + "'");
         }
+        Type memberType = typeOpt.value();
 
         if (scan_pos >= tokens.size() || tokens[scan_pos].type != TokenType::IDENTIFIER) {
             error(tokens[scan_pos - 1], "Expected member name.");
@@ -651,12 +648,11 @@ StmtPtr Parser::parseClassDecl() {
                     Token argTypeTok = tokens[scan_pos++];
                     Token argNameTok = tokens[scan_pos++];
 
-                    Type argType = TypeSystem::Int64;
-                    try {
-                        argType = TypeSystem::from_string(argTypeTok.lexeme);
-                    } catch (const TypeError& e) {
-                        ErrorReporter::report(e);
+                    auto typeOpt = TypeSystem::from_string(argTypeTok.lexeme);
+                    if (!typeOpt.has_value()) {
+                        error(argTypeTok, "Unknown type '" + argTypeTok.lexeme + "'");
                     }
+                    Type argType = typeOpt.value();
 
                     if (argType.kind == TypeKind::CLASS) {
                         error(argTypeTok,
@@ -707,12 +703,11 @@ StmtPtr Parser::parseClassDecl() {
     std::vector<StmtPtr> methods;
 
     while (!check(TokenType::RIGHT_CURLY) && !isAtEnd()) {
-        Type memberType = TypeSystem::Int64;
-        try {
-            memberType = TypeSystem::from_string(peek().lexeme);
-        } catch (const TypeError& e) {
-            ErrorReporter::report(e);
+        auto typeOpt = TypeSystem::from_string(peek().lexeme);
+        if (!typeOpt.has_value()) {
+            error(peek(), "Unknown type '" + peek().lexeme + "'");
         }
+        Type memberType = typeOpt.value();
         advance();
 
         Token memberName = previous();
@@ -751,12 +746,11 @@ StmtPtr Parser::parseClassDecl() {
                     Token arg_type_tok = advance();
                     Token arg_name_tok = advance();
 
-                    Type argType = TypeSystem::Int64;
-                    try {
-                        argType = TypeSystem::from_string(arg_type_tok.lexeme);
-                    } catch (const TypeError& e) {
-                        ErrorReporter::report(e);
+                    auto typeOpt = TypeSystem::from_string(arg_type_tok.lexeme);
+                    if (!typeOpt.has_value()) {
+                        error(arg_type_tok, "Unknown type '" + arg_type_tok.lexeme + "'");
                     }
+                    Type argType = typeOpt.value();
 
                     if (argType.kind == TypeKind::CLASS) { // CHANGE
                         error(arg_type_tok,
@@ -839,7 +833,7 @@ Program Parser::parse() {
 }
 
 [[noreturn]] void Parser::error(const Token& tok, const std::string& msg) {
-    ErrorReporter::report(ParseError(tok, msg));
+    ctx.de.report(DiagnosticLevel::ERROR, msg, tok.column, tok.row);
     throw ParserPanic(); // Throwing internal panic to unwind the stack safely
 }
 
